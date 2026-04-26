@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logoprincipal from "../img/logoppl2.png";
@@ -17,21 +16,22 @@ export default function Login() {
 
   const [empresas, setEmpresas] = useState([]);
   const [error, setError] = useState("");
+  const [loadingEmpresas, setLoadingEmpresas] = useState(false);
 
-  // Manejar inputs
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Cargar empresas del usuario
   const buscarEmpresas = async () => {
     if (!formData.email) return;
 
     try {
-      const emailEncoded = encodeURIComponent(formData.email);
-      const url = `${API_BASE}/api/usuarios/empresas/${emailEncoded}`;
+      setLoadingEmpresas(true);
+      setEmpresas([]);
+      setFormData((prev) => ({ ...prev, empresa: "" }));
 
-      console.log("🔎 Consultando empresas en:", url);
+      const emailEncoded = encodeURIComponent(formData.email.trim());
+      const url = `${API_BASE}/api/usuarios/empresas/${emailEncoded}`;
 
       const res = await fetch(url);
 
@@ -43,15 +43,21 @@ export default function Login() {
       const data = await res.json();
       setEmpresas(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("❌ Error cargando empresas:", err);
+      console.error("Error cargando empresas:", err);
       setEmpresas([]);
+    } finally {
+      setLoadingEmpresas(false);
     }
   };
 
-  // Enviar login
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!formData.empresa) {
+      setError("Debes seleccionar una empresa");
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -65,24 +71,8 @@ export default function Login() {
       if (response.ok) {
         login(data.usuario, data.token, formData.empresa);
 
-        // Cargar empresa asociada
-        try {
-          const emailEncoded = encodeURIComponent(data.usuario.email);
-          const resEmp = await fetch(
-            `${API_BASE}/api/usuarios/empresas/${emailEncoded}`
-          );
-          const empList = await resEmp.json();
+        localStorage.setItem("empresaId", formData.empresa);
 
-          if (Array.isArray(empList) && empList.length > 0) {
-            localStorage.setItem("empresaId", empList[0].id);
-          } else {
-            localStorage.setItem("empresaId", 1);
-          }
-        } catch {
-          localStorage.setItem("empresaId", 1);
-        }
-
-        // Redirección por rol
         const rol = data.usuario.rol?.toLowerCase().replace(/\s+/g, "");
 
         if (rol === "superadmin") {
@@ -94,7 +84,7 @@ export default function Login() {
         setError(data.message || "Credenciales inválidas");
       }
     } catch (err) {
-      console.error("❌ Error al conectar:", err);
+      console.error("Error al conectar:", err);
       setError("Error de conexión con el servidor");
     }
   };
@@ -114,45 +104,45 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email */}
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
             onBlur={buscarEmpresas}
-            className="w-full p-3 rounded bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-3 rounded bg-gray-700 text-white"
             placeholder="ejemplo@correo.com"
             required
           />
 
-          {/* Password */}
           <input
             type="password"
             name="password"
             value={formData.password}
             onChange={handleChange}
-            className="w-full p-3 rounded bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-3 rounded bg-gray-700 text-white"
             placeholder="••••••••"
             required
           />
 
-          {/* Empresa */}
           <select
             name="empresa"
             value={formData.empresa}
             onChange={handleChange}
-            className="w-full p-3 rounded bg-gray-700 text-white focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-3 rounded bg-gray-700 text-white"
             required
           >
-            <option value="">Selecciona empresa...</option>
-            {empresas.length > 0 ? (
-              empresas.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nombre}
-                </option>
-              ))
-            ) : (
+            <option value="">
+              {loadingEmpresas ? "Cargando empresas..." : "Selecciona empresa..."}
+            </option>
+
+            {empresas.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nombre}
+              </option>
+            ))}
+
+            {!loadingEmpresas && empresas.length === 0 && (
               <option value="" disabled>
                 Sin empresas asociadas
               </option>
@@ -163,7 +153,7 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded transition duration-300"
+            className="w-full bg-indigo-600 text-white py-2 rounded"
           >
             Iniciar sesión
           </button>

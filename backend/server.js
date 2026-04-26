@@ -49,7 +49,7 @@ import controlTowerRoutes from "./routes/controlTowerRoutes.js";
 import fulfillmentRoutes from "./routes/fulfillmentRoutes.js";
 
 import warehouseLayoutRoutes from "./routes/warehouseLayoutRoutes.js";
-import warehouseRoutes from "./routes/warehouseLayoutsRoutes.js";
+import warehouseRoutes from "./routes/warehouseLayoutRoutes.js";
 
 
 import permisosRoutes from "./routes/permisosRoutes.js";
