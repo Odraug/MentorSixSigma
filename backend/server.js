@@ -16,6 +16,8 @@ import debugRoutes from "./routes/debugRoutes.js";
 import contactoRoutes from "./routes/contactoRoutes.js";
 import consultasRoutes from "./routes/consultasRoutes.js";
 import a3Routes from "./routes/a3Routes.js";
+
+
 // ❌ ESTA LÍNEA YA NO VA
 // import geminiIA from "./api/geminiIA.js";
 
@@ -40,6 +42,17 @@ import purchasingRoutes from "./routes/purchasingRoutes.js";
 import salesRoutes from "./routes/salesRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import mtcpRoutes from "./routes/mtcpRoutes.js";
+import operationsRoutes from "./routes/operationsRoutes.js";
+import packingRoutes from "./routes/packingRoutes.js";
+import shippingRoutes from "./routes/shippingRoutes.js";
+import controlTowerRoutes from "./routes/controlTowerRoutes.js";
+import fulfillmentRoutes from "./routes/fulfillmentRoutes.js";
+
+import warehouseLayoutRoutes from "./routes/warehouseLayoutRoutes.js";
+import warehouseRoutes from "./routes/warehouseLayoutsRoutes.js";
+
+
+import permisosRoutes from "./routes/permisosRoutes.js";
 
 // ⭐ IMPORTS NECESARIOS PARA __dirname Y .env
 import path from "path";
@@ -139,7 +152,16 @@ app.use("/api", purchasingRoutes);
 app.use("/api", salesRoutes);
 app.use("/api", dashboardRoutes);
 app.use("/api", mtcpRoutes);
+app.use("/api", operationsRoutes);
+app.use("/api/operations", packingRoutes);
+app.use("/api/operations", shippingRoutes);
+app.use("/api/wms", controlTowerRoutes);
+app.use("/api/fulfillment", fulfillmentRoutes);
+app.use("/api/sales", salesRoutes);
 
+app.use("/api/wms", warehouseLayoutRoutes);
+app.use("/api/wms", warehouseRoutes);
+app.use("/api/permisos", permisosRoutes);
 
 // ======================================================
 // HEALTH CHECK

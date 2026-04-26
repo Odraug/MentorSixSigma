@@ -1,4 +1,5 @@
 // backend/routes/modulosRoutes.js
+
 import express from "express";
 import pool from "../db.js";
 import { verifyToken } from "../middleware/auth.js";
@@ -6,137 +7,188 @@ import { requireRole } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Obtener módulos permitidos por usuario logueado (vía roles_modulos)
+
+// ============================================
+// 📦 LISTAR TODOS LOS MÓDULOS
+// ============================================
+
+router.get("/", verifyToken, async (req,res)=>{
+
+try{
+
+const result = await pool.query(`
+SELECT *
+FROM modulos
+ORDER BY nombre
+`);
+
+res.json(result.rows);
+
+}catch(err){
+
+console.error("❌ Error obteniendo módulos:",err);
+res.status(500).json({message:"Error cargando módulos"});
+
+}
+
+});
+
+
+
+// ============================================
+// 📦 MÓDULOS PERMITIDOS PARA EL USUARIO
+// ============================================
+
 router.get(
-  "/roles-modulos/permitidos/usuario",
-  verifyToken,
-  async (req, res) => {
-    try {
-      const { rol } = req.user; // viene del token
+"/roles-modulos/permitidos/usuario",
+verifyToken,
+async (req,res)=>{
 
-      if (!rol) {
-        return res
-          .status(400)
-          .json({ message: "Rol no identificado en el token." });
-      }
+try{
 
-      console.log("🔍 Solicitando módulos permitidos para rol:", rol);
+const { rol } = req.user;
 
-      const result = await pool.query(
-        `
-        SELECT 
-          m.id,
-          m.nombre,
-          m.tipo,
-          m.categoria,
-          m.ruta
-        FROM roles_modulos rm
-        JOIN roles   r ON r.id = rm.rol_id
-        JOIN modulos m ON m.id = rm.modulo_id
-        WHERE r.nombre = $1
-          AND m.activo = TRUE
-          AND rm.activo = TRUE
-        ORDER BY m.id;
-        `,
-        [rol]
-      );
+const result = await pool.query(
+`
+SELECT
+m.id,
+m.nombre,
+m.tipo,
+m.categoria,
+m.ruta
+FROM roles_modulos rm
+JOIN roles r ON r.id = rm.rol_id
+JOIN modulos m ON m.id = rm.modulo_id
+WHERE r.nombre = $1
+AND m.activo = TRUE
+AND rm.activo = TRUE
+ORDER BY m.id
+`,
+[rol]
+);
 
-      console.log("✅ Módulos permitidos:", result.rows);
-      res.json(result.rows);
-    } catch (err) {
-      console.error("❌ Error al obtener módulos permitidos:", err);
-      res
-        .status(500)
-        .json({ message: "Error al obtener módulos permitidos" });
-    }
-  }
+res.json(result.rows);
+
+}catch(err){
+
+console.error("❌ Error módulos permitidos:",err);
+res.status(500).json({message:"Error módulos permitidos"});
+
+}
+
+}
 );
 
 
 
-// Crear módulo (Solo SuperAdmin)
-router.post("/", verifyToken, requireRole(["SuperAdmin"]), async (req, res) => {
-  const { nombre, tipo = "operativo", categoria = "General", descripcion = "" } = req.body;
-  if (!nombre?.trim()) {
-    return res.status(400).json({ message: "El nombre del módulo es obligatorio." });
-  }
-  try {
-    const result = await pool.query(
-      `INSERT INTO modulos (nombre, tipo, categoria, descripcion, fecha_creacion)
-       VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
-      [nombre, tipo, categoria, descripcion]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error("❌ Error al crear módulo:", err);
-    res.status(500).json({ message: "Error al crear módulo" });
-  }
-});
+// ============================================
+// ➕ CREAR MÓDULO
+// ============================================
 
-// Actualizar módulo (Solo SuperAdmin)
-router.put("/:id", verifyToken, requireRole(["SuperAdmin"]), async (req, res) => {
-  const { id } = req.params;
-  const { nombre, tipo, categoria, descripcion } = req.body;
-  try {
-    const result = await pool.query(
-      `UPDATE modulos SET nombre=$1, tipo=$2, categoria=$3, descripcion=$4
-       WHERE id=$5 RETURNING *`,
-      [nombre, tipo, categoria, descripcion, id]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("❌ Error al actualizar módulo:", err);
-    res.status(500).json({ message: "Error al actualizar módulo" });
-  }
-});
+router.post(
+"/",
+verifyToken,
+requireRole(["SuperAdmin"]),
+async (req,res)=>{
 
-// Eliminar módulo (Solo SuperAdmin)
-router.delete("/:id", verifyToken, requireRole(["SuperAdmin"]), async (req, res) => {
-  const { id } = req.params;
-  try {
-    await pool.query("DELETE FROM modulos WHERE id=$1", [id]);
-    res.json({ message: "🗑️ Módulo eliminado correctamente" });
-  } catch (err) {
-    console.error("❌ Error al eliminar módulo:", err);
-    res.status(500).json({ message: "Error al eliminar módulo" });
-  }
-});
+const { nombre,tipo,categoria,descripcion } = req.body;
 
-// ✅ Obtener módulos permitidos por usuario logueado
-router.get("/roles-modulos/permitidos/usuario", verifyToken, async (req, res) => {
-  try {
-    // El token debe incluir el rol (ej. req.user.rol)
-    const { rol } = req.user;
+try{
 
-    if (!rol) {
-      return res.status(400).json({ message: "Rol no identificado en el token." });
-    }
+const result = await pool.query(
+`
+INSERT INTO modulos
+(nombre,tipo,categoria,descripcion,activo,fecha_creacion)
+VALUES($1,$2,$3,$4,TRUE,NOW())
+RETURNING *
+`,
+[nombre,tipo,categoria,descripcion]
+);
 
-    console.log(`🔍 Solicitando módulos permitidos para rol: ${rol}`);
+res.status(201).json(result.rows[0]);
 
-    // Si tienes tabla roles_modulos, puedes usarla. Ejemplo:
-    // const result = await pool.query(`
-    //   SELECT m.id, m.nombre, m.tipo, m.categoria, m.ruta
-    //   FROM modulos m
-    //   INNER JOIN roles_modulos rm ON m.id = rm.modulo_id
-    //   INNER JOIN roles r ON r.id = rm.rol_id
-    //   WHERE r.nombre = $1 AND m.activo = true
-    //   ORDER BY m.id ASC;
-    // `, [rol]);
+}catch(err){
 
-    // Por ahora devolvemos todos los módulos activos (mock)
-    const result = await pool.query(`
-      SELECT id, nombre, tipo, categoria, ruta
-      FROM modulos
-      WHERE activo = true
-      ORDER BY id ASC
-    `);
+console.error("❌ Error creando módulo:",err);
+res.status(500).json({message:"Error creando módulo"});
 
-    res.json(result.rows);
-  } catch (err) {
-    console.error("❌ Error al obtener módulos permitidos:", err);
-    res.status(500).json({ message: "Error al obtener módulos permitidos" });
-  }
-});
+}
+
+}
+);
+
+
+
+// ============================================
+// ✏️ ACTUALIZAR MÓDULO
+// ============================================
+
+router.put(
+"/:id",
+verifyToken,
+requireRole(["SuperAdmin"]),
+async (req,res)=>{
+
+const { id } = req.params;
+const { nombre,tipo,categoria,descripcion } = req.body;
+
+try{
+
+const result = await pool.query(
+`
+UPDATE modulos
+SET nombre=$1,tipo=$2,categoria=$3,descripcion=$4
+WHERE id=$5
+RETURNING *
+`,
+[nombre,tipo,categoria,descripcion,id]
+);
+
+res.json(result.rows[0]);
+
+}catch(err){
+
+console.error("❌ Error actualizando módulo:",err);
+res.status(500).json({message:"Error actualizando módulo"});
+
+}
+
+}
+);
+
+
+
+// ============================================
+// ❌ ELIMINAR MÓDULO
+// ============================================
+
+router.delete(
+"/:id",
+verifyToken,
+requireRole(["SuperAdmin"]),
+async (req,res)=>{
+
+const { id } = req.params;
+
+try{
+
+await pool.query(`
+DELETE FROM modulos
+WHERE id=$1
+`,[id]);
+
+res.json({message:"Módulo eliminado"});
+
+}catch(err){
+
+console.error("❌ Error eliminando módulo:",err);
+res.status(500).json({message:"Error eliminando módulo"});
+
+}
+
+}
+);
+
+
 
 export default router;

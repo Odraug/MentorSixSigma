@@ -121,6 +121,23 @@ import KpiMtcp from "./pages/KPI/KpiMtcp.jsx";
 
 import PurchaseOrdersList from "./modules/core/purchasing/PurchaseOrdersList.jsx";
 import ReceivePurchaseOrder from "./modules/core/purchasing/ReceivePurchaseOrder.jsx";
+import SalesOrdersList from "./modules/core/sales/SalesOrdersList.jsx";
+import OperationsDashboard from "./modules/core/operations/PickingDashboard.jsx";
+import PackingDashboard from "./modules/core/operations/PackingDashboard.jsx";
+import ShippingDashboard from "./modules/core/operations/ShippingDashboard.jsx";
+import ControlTowerDashboard from "./modules/core/operations/ControlTowerDashboard.jsx";
+import FulfillmentDashboard from "./modules/core/fulfillment/FulfillmentDashboard.jsx";
+import WaveManager from "./modules/core/fulfillment/WaveManager.jsx";
+import PickingMonitor from "./modules/core/operations/PickingMonitor.jsx";
+import PickingRoute from "./modules/core/operations/PickingRoute.jsx";
+
+import SalesOrdersPage from "./modules/core/sales/SalesOrdersPage";
+import SalesOrderDetail from "./modules/core/sales/SalesOrderDetail";
+import OperationsHub from "./modules/core/operations/OperationsHub.jsx";
+
+import WarehouseLayout from "./modules/core/wms/WarehouseLayout.jsx";
+
+import PermisosMatrix from "./modules/admin/PermisosMatrix.jsx";
 
 // ============================================
 // 🚀 APP ROUTES
@@ -230,9 +247,23 @@ export default function App() {
 
         <Route path="/core/purchasing" element={<PurchaseOrdersList />} />
         <Route path="/core/purchasing/receive/:id" element={<ReceivePurchaseOrder />} />
+        <Route path="/core/sales" element={<SalesOrdersList />} />
+        <Route path="/core/operations" element={<OperationsDashboard />} />
+        <Route path="/core/operations/packing" element={<PackingDashboard/>} />
+        <Route path="/core/operations/shipping" element={<ShippingDashboard />} />
+        <Route path="/core/control-tower" element={<ControlTowerDashboard />} />
+        <Route path="/core/fulfillment" element={<FulfillmentDashboard />} />
+        <Route path="/core/waves" element={<WaveManager />} />
+        <Route path="/core/picking-monitor" element={<PickingMonitor />} />
+        <Route path="/core/picking-route/:waveId" element={<PickingRoute />} />
 
+        <Route path="/core/sales" element={<SalesOrdersPage />} />
+        <Route path="/core/sales/order/:id" element={<SalesOrderDetail />} />  
+        <Route path="/core/operations" element={<OperationsHub />} />
 
+        <Route path="/core/wms/layout" element={<WarehouseLayout />} />
 
+        <Route path="/admin/permisos" element={<PermisosMatrix />} />
         {/* Leads */}
         <Route path="/leads" element={<Leads />} />
 
