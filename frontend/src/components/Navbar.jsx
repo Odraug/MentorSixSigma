@@ -1,7 +1,7 @@
 // src/components/Navbar.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logoprincipal from "../img/logoppl2.png";
+import logoprincipal from "../img/Logo_Login.png";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
@@ -65,7 +65,7 @@ export default function Navbar() {
         <img
           src={logoprincipal}
           alt="MentorSuites"
-          className="h-14 w-auto bg-white/10 p-1 rounded-md"
+          className="h-14 w-auto"
         />
       </div>
 
