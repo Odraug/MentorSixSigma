@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logoprincipal from "../img/logoppl2.png";
+import logoprincipal from "../img/Logo_Login.png";
 import { API_BASE } from "../config/env";
 import { useAuth } from "../context/AuthContext";
 
@@ -96,7 +96,7 @@ export default function Login() {
           <img
             src={logoprincipal}
             alt="Logo MentorSuites"
-            className="h-20 w-auto mb-2 brightness-200 cursor-pointer"
+            className="h-24 w-auto mb-2 cursor-pointer"
             onClick={() => navigate("/")}
           />
           <h2 className="text-3xl font-bold text-indigo-400">Iniciar sesión</h2>
