@@ -78,18 +78,18 @@ try {
 
 
   return (
-    <div className="max-w-xl mx-auto p-6 bg-gray-800 rounded-lg mt-8 text-white shadow-lg">
+    <div className="max-w-xl mx-auto p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-transparent rounded-lg mt-8 text-gray-900 dark:text-white shadow-lg">
       {/* Logo */}
       <div className="flex flex-col items-center mb-6">
         <img
           src={logoprincipal}
           alt="Logo MentorSuites"
-          className="h-20 w-auto mb-2 brightness-200 cursor-pointer"
+          className="h-20 w-auto mb-2 dark:brightness-200 cursor-pointer"
           onClick={() => navigate("/")}
         />
       </div>
 
-      <h1 className="text-3xl font-bold mb-6 text-indigo-400">Contáctanos</h1>
+      <h1 className="text-3xl font-bold mb-6 text-indigo-600 dark:text-indigo-400">Contáctanos</h1>
 
       {enviado ? (
         <div className="flex flex-col items-center space-y-4">
@@ -98,7 +98,7 @@ try {
           </div>
           <button
             onClick={() => navigate("/")}
-            className="bg-indigo-500 px-6 py-2 rounded-lg hover:bg-indigo-600 transition"
+            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition"
           >
             Volver al inicio
           </button>
@@ -113,7 +113,7 @@ try {
               name="nombre"
               value={formData.nombre}
               onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
               required
             />
           </div>
@@ -126,7 +126,7 @@ try {
               name="apellido"
               value={formData.apellido}
               onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
               required
             />
           </div>
@@ -139,7 +139,7 @@ try {
               name="empresa"
               value={formData.empresa}
               onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -150,7 +150,7 @@ try {
               name="tipoUsuario"
               value={formData.tipoUsuario}
               onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Selecciona...</option>
               <option value="Empresa">Empresa</option>
@@ -168,7 +168,7 @@ try {
               name="correo"
               value={formData.correo}
               onChange={handleChange}
-              className="w-full p-2 rounded bg-gray-700 focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
               placeholder="correo@empresa.com"
               required
             />
@@ -177,8 +177,8 @@ try {
           {/* Teléfono */}
           <div>
             <label className="block mb-1">Teléfono de contacto:</label>
-            <div className="flex items-center gap-3 bg-gray-700 rounded-lg p-2">
-              <div className="flex items-center bg-gray-800 rounded-lg px-2 py-1">
+            <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-700 rounded-lg p-2">
+              <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg px-2 py-1">
                 <PhoneInput
                   country={"cl"}
                   value=""
@@ -202,7 +202,7 @@ try {
                     color: "white",
                   }}
                 />
-                <span className="text-white text-sm font-semibold">{dialCode}</span>
+                <span className="text-gray-900 dark:text-white text-sm font-semibold">{dialCode}</span>
               </div>
 
               <input
@@ -210,7 +210,7 @@ try {
                 name="telefono"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="flex-1 p-2 rounded bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className="flex-1 p-2 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
                 placeholder="X XXXX XXXX"
                 required
               />
@@ -225,7 +225,7 @@ try {
               value={formData.mensaje}
               onChange={handleChange}
               rows="4"
-              className="w-full p-2 rounded bg-gray-700 resize-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Cuéntanos brevemente en qué podemos ayudarte..."
               required
             />
@@ -236,10 +236,10 @@ try {
             <button
               type="submit"
               disabled={enviando}
-              className={`w-full sm:w-auto py-2 px-6 rounded transition ${
+              className={`w-full sm:w-auto py-2 px-6 rounded transition text-white ${
                 enviando
-                  ? "bg-gray-500 cursor-not-allowed"
-                  : "bg-indigo-500 hover:bg-indigo-600"
+                  ? "bg-gray-400 dark:bg-gray-500 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700"
               }`}
             >
               {enviando ? "Enviando..." : "Enviar mensaje"}
@@ -248,7 +248,7 @@ try {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="w-full sm:w-auto bg-gray-600 py-2 px-6 rounded hover:bg-gray-700 transition"
+              className="w-full sm:w-auto bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white py-2 px-6 rounded hover:bg-gray-300 dark:hover:bg-gray-700 transition"
             >
               Volver al inicio
             </button>

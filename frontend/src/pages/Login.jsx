@@ -90,8 +90,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-transparent p-8 rounded-2xl shadow-lg w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
           <img
             src={logoprincipal}
@@ -99,8 +99,8 @@ export default function Login() {
             className="h-24 w-auto mb-2 cursor-pointer"
             onClick={() => navigate("/")}
           />
-          <h2 className="text-3xl font-bold text-indigo-400">Iniciar sesión</h2>
-          <p className="text-gray-400 text-sm">Bienvenido a MentorSuites</p>
+          <h2 className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">Iniciar sesión</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Bienvenido a MentorSuites</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,7 +110,7 @@ export default function Login() {
             value={formData.email}
             onChange={handleChange}
             onBlur={buscarEmpresas}
-            className="w-full p-3 rounded bg-gray-700 text-white"
+            className="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
             placeholder="ejemplo@correo.com"
             required
           />
@@ -120,7 +120,7 @@ export default function Login() {
             name="password"
             value={formData.password}
             onChange={handleChange}
-            className="w-full p-3 rounded bg-gray-700 text-white"
+            className="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
             placeholder="••••••••"
             required
           />
@@ -129,7 +129,7 @@ export default function Login() {
             name="empresa"
             value={formData.empresa}
             onChange={handleChange}
-            className="w-full p-3 rounded bg-gray-700 text-white"
+            className="w-full p-3 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
             required
           >
             <option value="">
@@ -149,11 +149,11 @@ export default function Login() {
             )}
           </select>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded transition"
           >
             Iniciar sesión
           </button>
