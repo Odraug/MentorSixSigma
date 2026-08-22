@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logoprincipal from "../img/Logo_Login.png";
+import logoprincipal from "../img/Logo_Login_transparent.png";
 import { API_BASE } from "../config/env";
 import { useAuth } from "../context/AuthContext";
 

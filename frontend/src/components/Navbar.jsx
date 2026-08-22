@@ -1,7 +1,7 @@
 // src/components/Navbar.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logoprincipal from "../img/Logo_Login.png";
+import logoprincipal from "../img/Logo_Login_transparent.png";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
