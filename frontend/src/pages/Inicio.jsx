@@ -14,6 +14,11 @@ import iconTmsCargas from "../img/modulos/icon-tms-cargas.png";
 import iconTmsFlota from "../img/modulos/icon-tms-flota.png";
 import iconYard from "../img/modulos/icon-yard.png";
 import iconLayout from "../img/modulos/icon-layout.png";
+import iconAdminUsuarios from "../img/modulos/icon-admin-usuarios.png";
+import iconAdminRoles from "../img/modulos/icon-admin-roles.png";
+import iconAdminEmpresas from "../img/modulos/icon-admin-empresas.png";
+import iconAdminModulos from "../img/modulos/icon-admin-modulos.png";
+import iconAdminConsultas from "../img/modulos/icon-admin-consultas.png";
 
 // Iconos propios de MentorSuites por nombre de módulo; el resto usa un ícono genérico.
 const ICONOS_POR_MODULO = {
@@ -32,6 +37,12 @@ const ICONOS_POR_MODULO = {
   "yard management": iconYard,
   "diseñador de layout": iconLayout,
   "disenador de layout": iconLayout,
+  "usuarios": iconAdminUsuarios,
+  "roles": iconAdminRoles,
+  "empresas": iconAdminEmpresas,
+  "módulos": iconAdminModulos,
+  "modulos": iconAdminModulos,
+  "consultas": iconAdminConsultas,
 };
 
 const quitarAcentos = (s = "") =>
