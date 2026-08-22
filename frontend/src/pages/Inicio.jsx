@@ -74,13 +74,13 @@ export default function Inicio() {
   const grupos = [...new Set(modulos.map((m) => m.categoria))];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white px-6 sm:px-10 py-12">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-indigo-400 mb-3">
+    <div className="min-h-full bg-gray-900 text-white px-6 sm:px-10 py-6">
+      <div className="max-w-6xl mx-auto w-full">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-indigo-400 mb-2">
             Plataforma Operacional Integrada
           </h1>
-          <div className="mx-auto h-1 w-20 rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400" />
+          <div className="mx-auto h-1 w-16 rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400" />
         </div>
 
         {cargando && (
@@ -102,49 +102,52 @@ export default function Inicio() {
           </div>
         )}
 
-        {!cargando &&
-          grupos.map((grupo) => (
-            <div key={grupo} className="mb-10">
-              <div className="flex items-center gap-2.5 mb-4">
-                <span className="h-4 w-1 rounded-full bg-gradient-to-b from-blue-500 to-green-400" />
-                <h2 className="text-sm font-bold text-indigo-300 tracking-wide uppercase">
-                  {grupo}
-                </h2>
-              </div>
+        {!cargando && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {grupos.map((grupo) => (
+              <div key={grupo} className="bg-gray-800/40 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-blue-500 to-green-400" />
+                  <h2 className="text-xs font-bold text-indigo-300 tracking-wide uppercase">
+                    {grupo}
+                  </h2>
+                </div>
 
-              <div className="flex flex-wrap gap-3">
-                {modulos
-                  .filter((m) => m.categoria === grupo)
-                  .map((m) => {
-                    const icono = getIconoModulo(m.nombre);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => navigate(m.ruta)}
-                        className="group w-32 sm:w-36 flex flex-col items-center text-center gap-2 bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-700 hover:border-cyan-500/50 hover:bg-gray-700/80 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300"
-                      >
-                        {icono ? (
-                          <img
-                            src={icono}
-                            alt=""
-                            className="h-11 w-11 group-hover:scale-110 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="h-11 w-11 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-cyan-400 to-green-400 text-sm font-bold text-white shadow-md shadow-cyan-500/20 group-hover:scale-110 transition-transform duration-300">
-                            {m.nombre?.trim().charAt(0).toUpperCase() || "?"}
-                          </div>
-                        )}
+                <div className="flex flex-wrap gap-2.5">
+                  {modulos
+                    .filter((m) => m.categoria === grupo)
+                    .map((m) => {
+                      const icono = getIconoModulo(m.nombre);
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => navigate(m.ruta)}
+                          className="group w-24 flex flex-col items-center text-center gap-1.5 bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-700 hover:border-cyan-500/50 hover:bg-gray-700/80 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300"
+                        >
+                          {icono ? (
+                            <img
+                              src={icono}
+                              alt=""
+                              className="h-9 w-9 group-hover:scale-110 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="h-9 w-9 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-cyan-400 to-green-400 text-xs font-bold text-white shadow-md shadow-cyan-500/20 group-hover:scale-110 transition-transform duration-300">
+                              {m.nombre?.trim().charAt(0).toUpperCase() || "?"}
+                            </div>
+                          )}
 
-                        <h3 className="text-xs font-semibold text-white leading-snug">
-                          {m.nombre}
-                        </h3>
-                      </button>
-                    );
-                  })}
+                          <h3 className="text-[11px] font-semibold text-white leading-snug">
+                            {m.nombre}
+                          </h3>
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
