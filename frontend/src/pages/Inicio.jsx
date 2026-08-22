@@ -10,6 +10,10 @@ import iconVsm from "../img/modulos/icon-vsm.png";
 import iconSipoc from "../img/modulos/icon-sipoc.png";
 import iconOee from "../img/modulos/icon-oee.png";
 import iconDashboard from "../img/modulos/icon-dashboard.png";
+import iconTmsCargas from "../img/modulos/icon-tms-cargas.png";
+import iconTmsFlota from "../img/modulos/icon-tms-flota.png";
+import iconYard from "../img/modulos/icon-yard.png";
+import iconLayout from "../img/modulos/icon-layout.png";
 
 // Iconos propios de MentorSuites por nombre de módulo; el resto usa un ícono genérico.
 const ICONOS_POR_MODULO = {
@@ -23,9 +27,20 @@ const ICONOS_POR_MODULO = {
   "teep": iconOee,
   "kpi": iconDashboard,
   "drp": iconDashboard,
+  "tms - cargas y despacho": iconTmsCargas,
+  "tms - flota y transportistas": iconTmsFlota,
+  "yard management": iconYard,
+  "diseñador de layout": iconLayout,
+  "disenador de layout": iconLayout,
 };
 
-const getIconoModulo = (nombre = "") => ICONOS_POR_MODULO[nombre.trim().toLowerCase()];
+const quitarAcentos = (s = "") =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+const getIconoModulo = (nombre = "") => {
+  const clave = nombre.trim().toLowerCase();
+  return ICONOS_POR_MODULO[clave] || ICONOS_POR_MODULO[quitarAcentos(clave)];
+};
 
 export default function Inicio() {
   const navigate = useNavigate();
@@ -65,9 +80,7 @@ export default function Inicio() {
           Plataforma Operacional Integrada
         </h1>
         <div className="mx-auto h-1 w-24 rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 mb-4" />
-        <p className="text-gray-400">
-          LEAN • Planning • WMS • Inteligencia Operacional
-        </p>
+        
       </div>
 
       {cargando && (
