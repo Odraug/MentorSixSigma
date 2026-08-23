@@ -73,13 +73,7 @@ export default function Login() {
 
         localStorage.setItem("empresaId", formData.empresa);
 
-        const rol = data.usuario.rol?.toLowerCase().replace(/\s+/g, "");
-
-        if (rol === "superadmin") {
-          navigate("/admin/dashboard", { replace: true });
-        } else {
-          navigate("/inicio", { replace: true });
-        }
+        navigate("/inicio", { replace: true });
       } else {
         setError(data.message || "Credenciales inválidas");
       }
