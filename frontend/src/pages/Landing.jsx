@@ -2,11 +2,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import {
-  HiOutlineRocketLaunch,
-  HiOutlineGlobeAmericas,
-  HiOutlineHeart,
-} from "react-icons/hi2";
 import logoprincipal from "../img/LogoMentorSuites2.png";
 import iconA3 from "../img/modulos/icon-a3.png";
 import icon5s from "../img/modulos/icon-5s.png";
@@ -16,16 +11,11 @@ import iconSipoc from "../img/modulos/icon-sipoc.png";
 import iconOee from "../img/modulos/icon-oee.png";
 import iconDashboard from "../img/modulos/icon-dashboard.png";
 import iconIa from "../img/modulos/icon-ia.png";
+import iconMision from "../img/modulos/icon-mision.png";
+import iconVision from "../img/modulos/icon-vision.png";
+import iconValores from "../img/modulos/icon-valores.png";
 import Footer from "../components/Footer";
 import PublicNavbar from "../components/PublicNavbar";
-
-const IconBadge = ({ icon: Icon }) => (
-  <div className="mb-4 flex justify-center">
-    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-cyan-400 to-green-400 shadow-lg shadow-cyan-500/30">
-      <Icon className="h-8 w-8 text-white" />
-    </div>
-  </div>
-);
 
 const Landing = () => {
   const { scrollY } = useScroll();
@@ -111,17 +101,17 @@ const Landing = () => {
           {
             title: "Misión",
             text: "Facilitar la adopción de prácticas de excelencia operacional mediante herramientas digitales accesibles y potentes.",
-            icon: HiOutlineRocketLaunch,
+            icon: iconMision,
           },
           {
             title: "Visión",
             text: "Ser la suite líder en transformación digital de procesos Lean y mejora continua en Latinoamérica y el mundo.",
-            icon: HiOutlineGlobeAmericas,
+            icon: iconVision,
           },
           {
             title: "Valores",
             text: "Innovación, colaboración, aprendizaje continuo y compromiso con la mejora diaria.",
-            icon: HiOutlineHeart,
+            icon: iconValores,
           },
         ].map(({ title, text, icon }, i) => (
           <motion.div
@@ -129,7 +119,7 @@ const Landing = () => {
             whileHover={{ scale: 1.05, y: -5 }}
             className="p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-transparent rounded-xl shadow-md dark:shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
           >
-            <IconBadge icon={icon} />
+            <img src={icon} alt="" className="h-20 w-20 mx-auto mb-4" />
             <h3 className="text-2xl font-semibold text-indigo-600 dark:text-indigo-300 mb-2">{title}</h3>
             <p className="text-gray-600 dark:text-gray-300">{text}</p>
           </motion.div>
