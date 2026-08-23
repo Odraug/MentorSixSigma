@@ -2,11 +2,13 @@
 import React, { useEffect, useState } from "react";
 import { listarA3PorEmpresa } from "../../utils/apiA3";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ListA3() {
   const navigate = useNavigate();
+  const { usuario } = useAuth();
   const [a3list, setA3list] = useState([]);
-  const empresaId = localStorage.getItem("empresaId");
+  const empresaId = usuario?.empresa_id || localStorage.getItem("empresaId");
 
   useEffect(() => {
     if (empresaId) {
