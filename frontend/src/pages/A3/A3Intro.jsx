@@ -36,7 +36,7 @@ export default function A3Intro() {
         </button>
 
         <button
-          onClick={() => navigate("/a3/create")}
+          onClick={() => navigate("/a3/nuevo")}
           className="bg-green-600 hover:bg-green-700 px-5 py-3 rounded-lg font-semibold"
         >
           Crear Nuevo A3
