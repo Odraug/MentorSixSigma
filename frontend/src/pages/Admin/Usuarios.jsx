@@ -1,8 +1,10 @@
 // src/pages/Admin/Usuarios.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { API_BASE } from '../../config/env';
 
 export default function Usuarios() {
+  const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -182,9 +184,17 @@ export default function Usuarios() {
 
   return (
     <div className="p-6 bg-gray-900 min-h-screen text-white">
-      <h2 className="text-3xl font-bold text-indigo-400 mb-6">
-        Gestión de Usuarios
-      </h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-3xl font-bold text-indigo-400">
+          Gestión de Usuarios
+        </h2>
+        <button
+          onClick={() => navigate("/inicio")}
+          className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold text-sm"
+        >
+          ← Volver a Inicio
+        </button>
+      </div>
 
       {/* FORMULARIO */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">

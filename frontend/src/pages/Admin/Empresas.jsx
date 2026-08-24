@@ -1,10 +1,12 @@
 // src/pages/Admin/Empresas.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import EmpresasForm from "./components/EmpresasForm";
 import { API_BASE } from '../../config/env'; // ✅ único import necesario
 
 export default function Empresas() {
+  const navigate = useNavigate();
   const [empresas, setEmpresas] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
@@ -108,9 +110,17 @@ export default function Empresas() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <h1 className="text-3xl font-bold text-indigo-400 mb-6">
-        Gestión de Empresas
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-indigo-400">
+          Gestión de Empresas
+        </h1>
+        <button
+          onClick={() => navigate("/inicio")}
+          className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold text-sm"
+        >
+          ← Volver a Inicio
+        </button>
+      </div>
 
       {mensaje && (
         <p className="text-center text-green-400 mb-4 font-semibold">

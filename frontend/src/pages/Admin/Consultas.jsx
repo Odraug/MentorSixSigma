@@ -1,9 +1,11 @@
 // src/pages/Admin/Consultas.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE } from '../../config/env'; // ✅ ruta correcta
 
 const Consultas = () => {
+  const navigate = useNavigate();
   const [consultas, setConsultas] = useState([]);
   const [comentario, setComentario] = useState("");
   const [seleccionada, setSeleccionada] = useState(null);
@@ -82,9 +84,17 @@ const obtenerConsultas = async () => {
 
   return (
     <div className="p-6 text-white">
-      <h1 className="text-3xl font-bold text-indigo-400 mb-4">
-        Gestión de Consultas
-      </h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold text-indigo-400">
+          Gestión de Consultas
+        </h1>
+        <button
+          onClick={() => navigate("/inicio")}
+          className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold text-sm"
+        >
+          ← Volver a Inicio
+        </button>
+      </div>
 
       {/* Tabla principal */}
       <div className="overflow-x-auto">

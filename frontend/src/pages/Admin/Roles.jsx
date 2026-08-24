@@ -1,10 +1,12 @@
 // src/pages/Admin/Roles.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import RolForm from "./components/RolForm";
 import { API_BASE } from '../../config/env';// ✅ correcto
 
 export default function Roles() {
+  const navigate = useNavigate();
   const [roles, setRoles] = useState([]);
   const [mensaje, setMensaje] = useState("");
   const [rolSeleccionado, setRolSeleccionado] = useState(null);
@@ -67,12 +69,20 @@ export default function Roles() {
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-indigo-400">Gestión de Roles</h1>
-        <button
-          onClick={manejarNuevoRol}
-          className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold"
-        >
-          ➕ Nuevo Rol
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => navigate("/inicio")}
+            className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold text-sm"
+          >
+            ← Volver a Inicio
+          </button>
+          <button
+            onClick={manejarNuevoRol}
+            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold"
+          >
+            ➕ Nuevo Rol
+          </button>
+        </div>
       </div>
 
       {mensaje && (

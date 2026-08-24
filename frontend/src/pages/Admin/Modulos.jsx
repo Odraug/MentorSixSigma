@@ -1,9 +1,11 @@
 // src/pages/Admin/Modulos.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE } from '../../config/env'; // ✅ correcto
 
 export default function Modulos() {
+  const navigate = useNavigate();
   const [modulos, setModulos] = useState([]);
   const [form, setForm] = useState({
     nombre: "",
@@ -80,9 +82,17 @@ export default function Modulos() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <h1 className="text-3xl font-bold text-indigo-400 mb-6">
-        Gestión de Módulos
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-indigo-400">
+          Gestión de Módulos
+        </h1>
+        <button
+          onClick={() => navigate("/inicio")}
+          className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold text-sm"
+        >
+          ← Volver a Inicio
+        </button>
+      </div>
 
       {/* 🧩 Formulario de creación/edición */}
       <form
