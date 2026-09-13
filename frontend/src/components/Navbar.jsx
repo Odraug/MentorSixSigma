@@ -9,10 +9,14 @@ export default function Navbar() {
   const { usuario, logout } = useAuth();
 
   // 🔹 Logout
+  // Usamos una navegación dura (window.location) en vez de navigate() de
+  // React Router: al limpiar el usuario, ProtectedRoute/ProtectedLayout
+  // reaccionan al mismo tiempo que el router intenta ir a "/", y a veces
+  // ganaban la carrera mandando al usuario a /login en vez de a la landing.
   const handleLogout = () => {
     if (window.confirm("¿Deseas cerrar sesión?")) {
       logout();
-      navigate("/", { replace: true });
+      window.location.href = "/";
     }
   };
 
