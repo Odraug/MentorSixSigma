@@ -1,7 +1,7 @@
 // src/pages/GembaWalk/GwEjecucion.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiGet, apiPost } from "../../utils/api";
+import { apiGet, apiPost, apiUpload } from "../../utils/api";
 
 export default function GwEjecucion() {
   const navigate = useNavigate();
@@ -145,16 +145,30 @@ export default function GwEjecucion() {
     );
   };
 
-  // 📸 Subir evidencias como dataURL (base64) para que sobrevivan al F5
-  const handleFileUpload = (id, files) => {
+  // 📸 Subir evidencias a Supabase Storage (antes se guardaban como data
+  // URI en base64 directo en la base, lo cual infla cada fila; ahora se
+  // sube el archivo y solo se guarda la URL pública resultante).
+  const handleFileUpload = async (id, files) => {
     const archivos = Array.from(files || []);
     if (archivos.length === 0) return;
 
-    archivos.forEach((file) => {
-      const reader = new FileReader();
+    if (!gembaId) {
+      alert("⚠️ Guarda primero la planificación antes de subir evidencias.");
+      return;
+    }
 
-      reader.onload = (e) => {
-        const dataUrl = e.target.result; // "data:image/png;base64,..."
+    for (const file of archivos) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const resp = await apiUpload(`/gemba/${gembaId}/evidencias`, formData);
+
+        if (!resp.ok) {
+          console.error("Error subiendo evidencia Gemba:", resp);
+          alert(`⚠️ No se pudo subir "${file.name}": ${resp.message || "error desconocido"}`);
+          continue;
+        }
 
         setObservaciones((prev) =>
           prev.map((o) =>
@@ -163,20 +177,18 @@ export default function GwEjecucion() {
                   ...o,
                   evidencias: [
                     ...(o.evidencias || []),
-                    {
-                      name: file.name,
-                      type: file.type,
-                      url: dataUrl,
-                    },
+                    { name: resp.name, type: resp.type, url: resp.url },
                   ],
                 }
               : o
           )
         );
-      };
-
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.error("❌ Error subiendo evidencia Gemba:", err);
+        const msg = err?.response?.data?.message || "Error subiendo el archivo";
+        alert(`⚠️ No se pudo subir "${file.name}": ${msg}`);
+      }
+    }
   };
 
   // 💾 Guardar ejecución en backend

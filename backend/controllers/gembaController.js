@@ -1,5 +1,6 @@
 // backend/controllers/gembaController.js
 import pool from "../db.js";
+import { supabase } from "../services/supabaseClient.js";
 
 /**
  * POST /api/gemba/plan
@@ -298,5 +299,62 @@ export const guardarEjecucionGemba = async (req, res) => {
     });
   } finally {
     client.release();
+  }
+};
+
+/**
+ * POST /api/gemba/:id/evidencias
+ * Sube una foto de evidencia a Supabase Storage y devuelve su URL pública.
+ * No la guarda en la base todavía -- el frontend la agrega al arreglo
+ * "evidencias" de la observación en memoria, y recién queda persistida
+ * cuando se llama a guardarEjecucionGemba (igual que antes con base64,
+ * solo que ahora la URL apunta a Supabase en vez de ser un data: URI).
+ * Body (form-data): file
+ */
+export const subirEvidenciaGemba = async (req, res) => {
+  try {
+    const { id } = req.params; // gemba_id, solo para organizar la carpeta
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ ok: false, message: "No se recibió archivo" });
+    }
+
+    if (!supabase) {
+      return res.status(503).json({
+        ok: false,
+        message: "El almacenamiento de evidencias no está configurado en este servidor",
+      });
+    }
+
+    const ext = (file.originalname.split(".").pop() || "jpg").toLowerCase();
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const filePath = `gemba/${id}/${unique}.${ext}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("evidencias-5s") // mismo bucket que usa 5S, con carpeta propia "gemba/"
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("❌ Error subiendo evidencia Gemba a Supabase:", uploadError);
+      return res.status(500).json({ ok: false, message: "Error subiendo archivo a almacenamiento" });
+    }
+
+    const { data: publicData } = supabase.storage
+      .from("evidencias-5s")
+      .getPublicUrl(uploadData.path);
+
+    return res.status(201).json({
+      ok: true,
+      name: file.originalname,
+      type: file.mimetype,
+      url: publicData.publicUrl,
+    });
+  } catch (err) {
+    console.error("❌ Error en subirEvidenciaGemba:", err);
+    return res.status(500).json({ ok: false, message: "Error al subir evidencia del Gemba" });
   }
 };
