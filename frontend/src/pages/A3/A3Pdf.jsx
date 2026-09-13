@@ -352,8 +352,28 @@ export default function A3Pdf({ a3 }) {
           <h3 className="font-bold text-teal-700">
             D. Validar solución y estandarizar
           </h3>
+          {a3.objetivo?.resultadoFinal && (
+            <p>
+              <strong>Resultado final vs. meta:</strong>{" "}
+              {a3.objetivo.resultadoFinal}% (meta: {a3.objetivo?.meta || "—"}%)
+            </p>
+          )}
+
           <p><strong>Resultados:</strong></p>
           <p>{a3.seguimiento?.resultados || "Sin resultados."}</p>
+
+          {Array.isArray(a3.estandarizacion) && a3.estandarizacion.length > 0 && (
+            <>
+              <p><strong>Checklist de estandarización:</strong></p>
+              <ul className="list-disc ml-5">
+                {a3.estandarizacion.map((item) => (
+                  <li key={item.id}>
+                    {item.hecha ? "✅" : "⬜"} {item.texto || "(sin descripción)"}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           <p><strong>Lecciones aprendidas:</strong></p>
           <p>{a3.lecciones || "Sin lecciones registradas."}</p>

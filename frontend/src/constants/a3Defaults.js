@@ -33,7 +33,10 @@ export const defaultA3 = {
     indicador: "",
     meta: "",
     cumplimiento: "",
-    brecha: ""
+    brecha: "",
+    // Resultado medido después de implementar las contramedidas (Sección D),
+    // para poder comparar contra la meta definida en la Sección A.
+    resultadoFinal: ""
   },
   
   analisis5W2H: {
@@ -50,7 +53,15 @@ export const defaultA3 = {
   contramedidas: { lista: [""] },
   acciones: [],
   seguimiento: { plan: "", resultados: "", graficoData: [], imagenes: [] },
-  lecciones: ""
+  lecciones: "",
+  // Checklist de estandarización (Sección D) — precargado con los pasos
+  // típicos de Lean Six Sigma para sostener la mejora en el tiempo.
+  estandarizacion: [
+    { id: 1, texto: "Actualizar el procedimiento / instructivo de trabajo (SOP)", hecha: false },
+    { id: 2, texto: "Capacitar al equipo en el nuevo método", hecha: false },
+    { id: 3, texto: "Agregar o actualizar el control visual en el área", hecha: false },
+    { id: 4, texto: "Definir plan de auditoría de seguimiento", hecha: false }
+  ]
 };
 
 
