@@ -126,8 +126,10 @@ Entrega:
       if (out) out.value = textoIA;
 
       // 🖼️ Capturar el diagrama como imagen (solo tiene sentido en desktop,
-      // donde se ve el fishbone; en mobile se muestra la lista apilada)
-      const node = document.querySelector(".ishikawa-canvas");
+      // donde se ve el fishbone; en mobile el mismo nodo está oculto con
+      // display:none y capturarlo daría una imagen en blanco)
+      const esDesktop = window.innerWidth >= 768;
+      const node = esDesktop ? document.querySelector(".ishikawa-canvas") : null;
       if (node) {
         node.style.overflow = "visible";
 
