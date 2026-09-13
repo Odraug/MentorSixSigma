@@ -60,8 +60,7 @@ import GwListado from "./pages/GembaWalk/GwListado.jsx";
 // 🗺️ VSM
 // ============================================
 import VsmIntro from "./pages/VSM/VsmIntro.jsx";
-import VsmBuilder from "./pages/VSM/VsmBuilder.jsx";
-import Vsm from "./pages/VSM/Vsm.jsx";
+import VsmFlow from "./pages/VSM/VsmFlow.jsx";
 
 // ============================================
 // 🔗 SIPOC
@@ -69,6 +68,8 @@ import Vsm from "./pages/VSM/Vsm.jsx";
 import SipocIntro from "./pages/SIPOC/SipocIntro";
 import SipocList from "./pages/SIPOC/SipocList";
 import SipocBuilder from "./pages/SIPOC/SipocBuilder";
+import DiagnosticoRapido from "./pages/Diagnostico/DiagnosticoRapido";
+import DiagnosticoLista from "./pages/Diagnostico/DiagnosticoLista";
 import SipocResumen from "./pages/SIPOC/SipocResumen"
 
 
@@ -136,6 +137,11 @@ import SalesOrderDetail from "./modules/core/sales/SalesOrderDetail";
 import OperationsHub from "./modules/core/operations/OperationsHub.jsx";
 
 import WarehouseLayout from "./modules/core/wms/WarehouseLayout.jsx";
+import WarehouseLayoutDesigner from "./modules/core/wms/WarehouseLayoutDesigner.jsx";
+import AbcXyzAnalysis from "./pages/ABCXYZ/AbcXyzAnalysis.jsx";
+import TmsDashboard from "./modules/core/tms/TmsDashboard.jsx";
+import CarriersFleetManager from "./modules/core/tms/CarriersFleetManager.jsx";
+import YardBoard from "./modules/core/yard/YardBoard.jsx";
 
 import PermisosMatrix from "./modules/admin/PermisosMatrix.jsx";
 
@@ -196,10 +202,13 @@ export default function App() {
        <Route path="/gemba/listado" element={<GwListado />} /> 
         {/* VSM */}
         <Route path="/vsm/intro" element={<VsmIntro />} />
-        <Route path="/vsm/builder" element={<VsmBuilder />} />
-        <Route path="/vsm/vsm" element={<Vsm />} />
+        <Route path="/vsm/builder" element={<VsmFlow />} />
+        <Route path="/vsm/vsm" element={<VsmFlow />} />
 
         {/* SIPOC */}
+        <Route path="/diagnostico" element={<DiagnosticoRapido />} />
+        <Route path="/diagnostico/lista" element={<DiagnosticoLista />} />
+        <Route path="/diagnostico/:id" element={<DiagnosticoRapido />} />
         <Route path="/sipoc/intro" element={<SipocIntro /> } />
         <Route path="/sipoc/lista" element={<SipocList /> } />
         <Route path="/sipoc/builder" element={<SipocBuilder />}/>
@@ -262,6 +271,11 @@ export default function App() {
         <Route path="/core/operations" element={<OperationsHub />} />
 
         <Route path="/core/wms/layout" element={<WarehouseLayout />} />
+        <Route path="/core/wms/layout-designer" element={<WarehouseLayoutDesigner />} />
+        <Route path="/analisis/abc-xyz" element={<AbcXyzAnalysis />} />
+        <Route path="/core/tms" element={<TmsDashboard />} />
+        <Route path="/core/tms/flota" element={<CarriersFleetManager />} />
+        <Route path="/core/yard" element={<YardBoard />} />
 
         <Route path="/admin/permisos" element={<PermisosMatrix />} />
         {/* Leads */}

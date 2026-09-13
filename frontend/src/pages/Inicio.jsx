@@ -48,6 +48,16 @@ const ICONOS_POR_MODULO = {
 const quitarAcentos = (s = "") =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+// Un subt\u00edtulo corto por fase para que la pantalla de Inicio gu\u00ede al usuario
+// a trav\u00e9s de la metodolog\u00eda Lean Six Sigma completa, en orden.
+const FASE_DESCRIPCION = {
+  "0. Diagn\u00f3stico": "Cont\u00e1 tu proceso con tus palabras y te decimos por d\u00f3nde empezar",
+  "1. Definir": "Delimit\u00e1 el proceso y sus l\u00edmites",
+  "2. Medir": "Observ\u00e1 el proceso y cuantific\u00e1 el estado actual",
+  "3. Analizar y Mejorar": "Encontr\u00e1 la causa ra\u00edz y aplic\u00e1 mejoras",
+  "4. Operar": "Gestion\u00e1 la operaci\u00f3n diaria",
+};
+
 const getIconoModulo = (nombre = "") => {
   const clave = nombre.trim().toLowerCase();
   return ICONOS_POR_MODULO[clave] || ICONOS_POR_MODULO[quitarAcentos(clave)];
@@ -83,6 +93,39 @@ export default function Inicio() {
   }, [token]);
 
   const grupos = [...new Set(modulos.map((m) => m.categoria))];
+  // El backend ya devuelve los módulos ordenados por fase (columna `orden`).
+  // Separamos "Administración" del resto: no es un paso de la metodología,
+  // es configuración del sistema, así que va aparte y con otro estilo.
+  const gruposFase = grupos.filter((g) => g !== "Administración");
+  const tieneAdmin = grupos.includes("Administración");
+
+  const renderTile = (m) => {
+    const icono = getIconoModulo(m.nombre);
+    return (
+      <button
+        key={m.id}
+        type="button"
+        onClick={() => navigate(m.ruta)}
+        className="group w-24 flex flex-col items-center text-center gap-1.5 bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-700 hover:border-cyan-500/50 hover:bg-gray-700/80 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300"
+      >
+        {icono ? (
+          <img
+            src={icono}
+            alt=""
+            className="h-9 w-9 group-hover:scale-110 transition-transform duration-300"
+          />
+        ) : (
+          <div className="h-9 w-9 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-cyan-400 to-green-400 text-xs font-bold text-white shadow-md shadow-cyan-500/20 group-hover:scale-110 transition-transform duration-300">
+            {m.nombre?.trim().charAt(0).toUpperCase() || "?"}
+          </div>
+        )}
+
+        <h3 className="text-[11px] font-semibold text-white leading-snug">
+          {m.nombre}
+        </h3>
+      </button>
+    );
+  };
 
   return (
     <div className="min-h-full bg-gray-900 text-white px-6 sm:px-10 py-6">
@@ -114,50 +157,44 @@ export default function Inicio() {
         )}
 
         {!cargando && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {grupos.map((grupo) => (
-              <div key={grupo} className="bg-gray-800/40 rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-blue-500 to-green-400" />
-                  <h2 className="text-xs font-bold text-indigo-300 tracking-wide uppercase">
-                    {grupo}
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {gruposFase.map((grupo) => (
+                <div key={grupo} className="bg-gray-800/40 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-blue-500 to-green-400" />
+                    <h2 className="text-xs font-bold text-indigo-300 tracking-wide uppercase">
+                      {grupo}
+                    </h2>
+                  </div>
+                  {FASE_DESCRIPCION[grupo] && (
+                    <p className="text-[11px] text-gray-500 mb-3 ml-3">{FASE_DESCRIPCION[grupo]}</p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2.5">
+                    {modulos.filter((m) => m.categoria === grupo).map(renderTile)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {tieneAdmin && (
+              <div className="mt-8 pt-5 border-t border-dashed border-gray-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-amber-400">🔒</span>
+                  <h2 className="text-xs font-bold text-amber-400 tracking-wide uppercase">
+                    Administración
                   </h2>
                 </div>
-
+                <p className="text-[11px] text-gray-500 mb-3 ml-6">
+                  Configuración del sistema — solo administradores
+                </p>
                 <div className="flex flex-wrap gap-2.5">
-                  {modulos
-                    .filter((m) => m.categoria === grupo)
-                    .map((m) => {
-                      const icono = getIconoModulo(m.nombre);
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => navigate(m.ruta)}
-                          className="group w-24 flex flex-col items-center text-center gap-1.5 bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-700 hover:border-cyan-500/50 hover:bg-gray-700/80 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300"
-                        >
-                          {icono ? (
-                            <img
-                              src={icono}
-                              alt=""
-                              className="h-9 w-9 group-hover:scale-110 transition-transform duration-300"
-                            />
-                          ) : (
-                            <div className="h-9 w-9 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-cyan-400 to-green-400 text-xs font-bold text-white shadow-md shadow-cyan-500/20 group-hover:scale-110 transition-transform duration-300">
-                              {m.nombre?.trim().charAt(0).toUpperCase() || "?"}
-                            </div>
-                          )}
-
-                          <h3 className="text-[11px] font-semibold text-white leading-snug">
-                            {m.nombre}
-                          </h3>
-                        </button>
-                      );
-                    })}
+                  {modulos.filter((m) => m.categoria === "Administración").map(renderTile)}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

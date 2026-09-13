@@ -16,23 +16,16 @@ export default function VsmIntro() {
       <p className="text-gray-300 text-center max-w-2xl mb-8">
         El Mapeo de Flujo de Valor (VSM) permite visualizar y analizar el flujo
         de materiales e información necesarios para entregar un producto o
-        servicio al cliente. Desde aquí puedes crear el mapa o realizar el
-        análisis cuantitativo (VSA).
+        servicio al cliente. Armá el mapa arrastrando procesos e inventarios —
+        el Tiempo de Entrega y el %Valor Agregado se calculan solos.
       </p>
 
       <div className="flex gap-6">
         <button
-          onClick={() => navigate("/vsm/vsm")}
+          onClick={() => navigate("/vsm/builder")}
           className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg text-lg font-semibold"
         >
           🗺️ Crear / Editar Mapa
-        </button>
-
-        <button
-          onClick={() => navigate("/vsm/builder")}
-          className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg text-lg font-semibold"
-        >
-          📊 Análisis de Flujo (VSA)
         </button>
 
                 <button

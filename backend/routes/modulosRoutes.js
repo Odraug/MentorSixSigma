@@ -55,14 +55,15 @@ m.id,
 m.nombre,
 m.tipo,
 m.categoria,
-m.ruta
+m.ruta,
+m.orden
 FROM roles_modulos rm
 JOIN roles r ON r.id = rm.rol_id
 JOIN modulos m ON m.id = rm.modulo_id
 WHERE r.nombre = $1
 AND m.activo = TRUE
 AND rm.activo = TRUE
-ORDER BY m.id
+ORDER BY m.orden, m.id
 `,
 [rol]
 );

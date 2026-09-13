@@ -35,6 +35,7 @@ import kaizenRoutes from "./routes/kaizenRoutes.js";
 import oeeParadasRoutes from "./routes/oeeParadasRoutes.js";
 import vsmRoutes from "./routes/vsmRoutes.js";
 import sipocRoutes from "./routes/sipocRoutes.js";
+import diagnosticoRoutes from "./routes/diagnosticoRoutes.js";
 
 import drpRoutes from "./routes/drpRoutes.js";
 
@@ -50,6 +51,10 @@ import fulfillmentRoutes from "./routes/fulfillmentRoutes.js";
 
 import warehouseLayoutRoutes from "./routes/warehouseLayoutRoutes.js";
 import warehouseRoutes from "./routes/warehouseLayoutRoutes.js";
+import layoutDesignRoutes from "./routes/layoutDesignRoutes.js";
+import abcXyzRoutes from "./routes/abcXyzRoutes.js";
+import tmsRoutes from "./routes/tmsRoutes.js";
+import yardRoutes from "./routes/yardRoutes.js";
 
 
 import permisosRoutes from "./routes/permisosRoutes.js";
@@ -145,6 +150,7 @@ app.use("/api/kaizen", kaizenRoutes);
 app.use("/oee/paradas", oeeParadasRoutes);
 app.use("/api/vsm", vsmRoutes);
 app.use("/api/sipoc", sipocRoutes);
+app.use("/api/diagnostico", diagnosticoRoutes);
 
 app.use("/api/drp", drpRoutes);
 
@@ -161,6 +167,10 @@ app.use("/api/sales", salesRoutes);
 
 app.use("/api/wms", warehouseLayoutRoutes);
 app.use("/api/wms", warehouseRoutes);
+app.use("/api/wms", layoutDesignRoutes);
+app.use("/api/analisis", abcXyzRoutes);
+app.use("/api/tms", tmsRoutes);
+app.use("/api/yard", yardRoutes);
 app.use("/api/permisos", permisosRoutes);
 
 // ======================================================
