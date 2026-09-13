@@ -47,11 +47,11 @@ router.post("/", async (req, res) => {
 
       texto = completion.choices?.[0]?.message?.content || texto;
     } else if (selectedEngine === "gemini" && geminiKey) {
-      console.log("🤖 Usando Gemini 2.5 Flash...");
+      console.log("🤖 Usando Gemini 3.6 Flash...");
       const genAI = new GoogleGenAI({ apiKey: geminiKey });
 
       const result = await genAI.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: [{ role: "user", text: prompt }],
       });
 

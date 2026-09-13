@@ -12,10 +12,10 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 async function testGemini() {
   try {
-    console.log("🚀 Enviando solicitud a Gemini (modelo 2.5-flash)...");
+    console.log("🚀 Enviando solicitud a Gemini (modelo 3.6-flash)...");
 
     const result = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: [{ role: "user", text: "Hola Gemini, prueba desde Node.js" }],
     });
 

@@ -406,7 +406,7 @@ No repitas literalmente los datos de entrada, elabora un análisis profesional y
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
     // 👇 Usamos el MISMO modelo que tenías configurado en geminiIA.js
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
     const result = await model.generateContent(prompt);
 

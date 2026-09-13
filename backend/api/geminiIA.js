@@ -26,7 +26,7 @@ if (!apiKey) {
 let model = null;
 if (apiKey) {
   const genAI = new GoogleGenerativeAI(apiKey);
-  model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 }
 
 /**
@@ -54,9 +54,28 @@ export async function generarConGemini({
     const textPrompt =
       typeof prompt === "string" ? prompt : JSON.stringify(prompt, null, 2);
 
-    console.log("🚀 Enviando solicitud a Gemini 2.5 Flash...");
+    console.log("🚀 Enviando solicitud a Gemini 3.6 Flash...");
 
-    const result = await model.generateContent(textPrompt);
+    // Gemini a veces devuelve 503 "high demand" en picos de tráfico — es
+    // transitorio, así que reintentamos un par de veces con espera antes de
+    // darlo por fallado.
+    const INTENTOS_MAX = 3;
+    let result;
+    for (let intento = 1; intento <= INTENTOS_MAX; intento++) {
+      try {
+        result = await model.generateContent(textPrompt);
+        break;
+      } catch (error) {
+        const saturado = /503|overloaded|high demand|UNAVAILABLE/i.test(error?.message || "");
+        if (saturado && intento < INTENTOS_MAX) {
+          console.warn(`⚠️ Gemini saturado, reintentando (${intento}/${INTENTOS_MAX})...`);
+          await new Promise((r) => setTimeout(r, intento * 3000));
+          continue;
+        }
+        throw error;
+      }
+    }
+
     const response = result?.response;
 
     let text = "";

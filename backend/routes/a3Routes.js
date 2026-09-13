@@ -265,7 +265,7 @@ router.post("/ia", async (req, res) => {
 
     // 🚀 Usa Gemini real
     if (engine === "gemini" || !engine) {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
       const result = await model.generateContent(prompt);
       suggestion = result.response.text();
     }
