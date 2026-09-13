@@ -102,6 +102,12 @@ export default function DiagnosticoRapido() {
             >
               Diagnósticos anteriores
             </button>
+            <button
+              onClick={() => navigate("/inicio")}
+              className="bg-gray-600 px-4 py-2 rounded hover:bg-indigo-700 text-sm"
+            >
+              Volver al menú principal
+            </button>
           </div>
         </div>
 
