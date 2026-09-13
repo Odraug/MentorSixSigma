@@ -13,6 +13,8 @@ export default function GwPlan() {
     proposito: "",
     participantes: [],
   });
+  const [errores, setErrores] = useState({});
+  const [guardando, setGuardando] = useState(false);
 
   // ➕ Agregar participante
   const addParticipante = () => {
@@ -43,7 +45,20 @@ export default function GwPlan() {
     }));
   };
 
+  const validar = () => {
+    const nuevosErrores = {};
+    if (!plan.area.trim()) nuevosErrores.area = "El área es obligatoria";
+    if (!plan.fecha) nuevosErrores.fecha = "La fecha es obligatoria";
+    if (!plan.responsable.trim()) nuevosErrores.responsable = "El responsable es obligatorio";
+    setErrores(nuevosErrores);
+    return Object.keys(nuevosErrores).length === 0;
+  };
+
   const guardarPlan = async () => {
+  if (guardando) return; // evita doble submit con doble clic
+  if (!validar()) return;
+
+  setGuardando(true);
   try {
     const body = {
       ...plan,
@@ -69,6 +84,8 @@ export default function GwPlan() {
   } catch (err) {
     console.error("❌ Error guardando plan Gemba:", err);
     alert("❌ Error guardando plan Gemba en el servidor");
+  } finally {
+    setGuardando(false);
   }
 };
 
@@ -80,37 +97,42 @@ export default function GwPlan() {
 
       <div className="max-w-4xl mx-auto bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-lg">
         {/* Datos generales */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-gray-300 mb-1">Área o Planta:</label>
+            <label className="block text-gray-300 mb-1">Área o Planta: <span className="text-red-400">*</span></label>
             <input
               type="text"
               value={plan.area}
               onChange={(e) => setPlan({ ...plan, area: e.target.value })}
-              className="bg-gray-700 p-2 w-full rounded"
+              className={`bg-gray-700 p-2 w-full rounded border ${errores.area ? "border-red-500" : "border-transparent"}`}
+              placeholder="Ej: Bodega principal"
             />
+            {errores.area && <p className="text-xs text-red-400 mt-1">{errores.area}</p>}
           </div>
 
           <div>
-            <label className="block text-gray-300 mb-1">Fecha:</label>
+            <label className="block text-gray-300 mb-1">Fecha: <span className="text-red-400">*</span></label>
             <input
               type="date"
               value={plan.fecha}
               onChange={(e) => setPlan({ ...plan, fecha: e.target.value })}
-              className="bg-gray-700 p-2 w-full rounded"
+              className={`bg-gray-700 p-2 w-full rounded border ${errores.fecha ? "border-red-500" : "border-transparent"}`}
             />
+            {errores.fecha && <p className="text-xs text-red-400 mt-1">{errores.fecha}</p>}
           </div>
 
           <div>
-            <label className="block text-gray-300 mb-1">Responsable:</label>
+            <label className="block text-gray-300 mb-1">Responsable: <span className="text-red-400">*</span></label>
             <input
               type="text"
               value={plan.responsable}
               onChange={(e) =>
                 setPlan({ ...plan, responsable: e.target.value })
               }
-              className="bg-gray-700 p-2 w-full rounded"
+              className={`bg-gray-700 p-2 w-full rounded border ${errores.responsable ? "border-red-500" : "border-transparent"}`}
+              placeholder="¿Quién lidera el recorrido?"
             />
+            {errores.responsable && <p className="text-xs text-red-400 mt-1">{errores.responsable}</p>}
           </div>
 
           <div>
@@ -131,7 +153,8 @@ export default function GwPlan() {
           Participantes
         </h2>
 
-        <table className="w-full border-collapse mb-4">
+        <div className="overflow-x-auto mb-4">
+        <table className="w-full border-collapse min-w-[520px]">
           <thead>
             <tr className="bg-gray-700 text-gray-300 text-sm">
               <th className="p-2 border border-gray-600">Área / Gerencia</th>
@@ -196,6 +219,7 @@ export default function GwPlan() {
             )}
           </tbody>
         </table>
+        </div>
 
         <button
           onClick={addParticipante}
@@ -214,9 +238,10 @@ export default function GwPlan() {
           </button>
           <button
             onClick={guardarPlan}
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold"
+            disabled={guardando}
+            className="bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
           >
-            Guardar plan
+            {guardando ? "Guardando..." : "Guardar plan"}
           </button>
         </div>
       </div>

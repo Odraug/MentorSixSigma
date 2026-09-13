@@ -11,6 +11,11 @@ export default function GwEjecucion() {
   const [participantes, setParticipantes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [gembaId, setGembaId] = useState(null);
+  const [guardando, setGuardando] = useState(false);
+  // true cuando los datos vienen del respaldo local (localStorage) porque
+  // no se pudo confirmar contra el servidor — para avisarle al usuario que
+  // podría no estar viendo la última versión guardada.
+  const [fuenteLocal, setFuenteLocal] = useState(false);
 
   // 🔧 helper para limpiar evidencias con blob:
   const limpiarEvidencias = (obsArray = []) =>
@@ -83,6 +88,8 @@ export default function GwEjecucion() {
   }, []);
 
   const cargarDesdeLocalStorage = () => {
+    setFuenteLocal(true);
+
     const savedPlan = localStorage.getItem("gembaPlan");
     if (savedPlan) setPlan(JSON.parse(savedPlan));
 
@@ -160,11 +167,14 @@ export default function GwEjecucion() {
 
   // 💾 Guardar ejecución en backend
   const guardar = async () => {
+    if (guardando) return; // evita doble submit con doble clic
     try {
       if (!gembaId) {
         alert("⚠️ No hay Gemba asociado. Guarda primero la planificación.");
         return;
       }
+
+      setGuardando(true);
 
       const payload = {
         observaciones: observaciones.map((o) => ({
@@ -184,10 +194,13 @@ export default function GwEjecucion() {
         return;
       }
 
+      setFuenteLocal(false);
       alert("✅ Ejecución guardada correctamente");
     } catch (err) {
       console.error("❌ Error guardando ejecución:", err);
       alert("❌ Error guardando ejecución en el servidor");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -215,10 +228,10 @@ export default function GwEjecucion() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-yellow-400">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold text-yellow-400">
           🚶 Ejecución Gemba Walk
         </h1>
         <div className="flex gap-2">
@@ -230,12 +243,19 @@ export default function GwEjecucion() {
           </button>
           <button
             onClick={guardar}
-            className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg"
+            disabled={guardando}
+            className="bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed px-3 py-2 rounded-lg"
           >
-            Guardar
+            {guardando ? "Guardando..." : "Guardar"}
           </button>
         </div>
       </div>
+
+      {fuenteLocal && (
+        <div className="mb-6 bg-amber-900/30 border border-amber-600 rounded-lg p-3 text-sm text-amber-300">
+          ⚠️ No se pudo confirmar esta información contra el servidor — estás viendo la última copia guardada en este navegador. Presioná "Guardar" para sincronizarla apenas tengas conexión.
+        </div>
+      )}
 
       {/* INFO GENERAL */}
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 mb-8">
@@ -266,9 +286,9 @@ export default function GwEjecucion() {
         )}
       </div>
 
-      {/* TABLA */}
+      {/* OBSERVACIONES */}
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div className="flex justify-between mb-4">
+        <div className="flex justify-between mb-4 flex-wrap gap-2">
           <h2 className="text-xl text-yellow-300">🗒️ Observaciones</h2>
           <button
             onClick={addObs}
@@ -278,6 +298,23 @@ export default function GwEjecucion() {
           </button>
         </div>
 
+        {/* Ayuda: qué diferencia a cada tipo de observación */}
+        <div className="mb-4 bg-gray-900/60 border border-yellow-600/40 rounded-lg p-3 text-sm text-gray-300">
+          <p className="font-semibold text-yellow-300 mb-1">💡 ¿Qué tipo elijo?</p>
+          <p>
+            <span className="text-red-400 font-medium">⚠️ Hallazgo</span>: algo que no está bien y hay que corregir.{" "}
+            <span className="text-green-400 font-medium">✅ Buena práctica</span>: algo que sí funciona bien y vale la pena replicar en otras áreas.{" "}
+            <span className="text-blue-300 font-medium">🔧 Acción inmediata</span>: un problema que ya se resolvió en el momento, durante el recorrido.
+          </p>
+        </div>
+
+        {observaciones.length === 0 && (
+          <p className="text-center text-gray-400 py-3">No hay observaciones registradas todavía.</p>
+        )}
+
+        {/* Tabla — desde md hacia arriba */}
+        {observaciones.length > 0 && (
+        <div className="overflow-x-auto hidden md:block">
         <table className="w-full border-collapse text-sm">
           <thead className="bg-gray-700 text-gray-300">
             <tr>
@@ -290,17 +327,7 @@ export default function GwEjecucion() {
             </tr>
           </thead>
           <tbody>
-            {observaciones.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="text-center text-gray-400 py-3 border border-gray-700"
-                >
-                  No hay observaciones registradas
-                </td>
-              </tr>
-            ) : (
-              observaciones.map((o) => (
+              {observaciones.map((o) => (
                 <tr key={o.id} className="align-top">
                   <td className="p-2 border border-gray-700">
                     <select
@@ -372,10 +399,77 @@ export default function GwEjecucion() {
                     </button>
                   </td>
                 </tr>
-              ))
-            )}
+              ))}
           </tbody>
         </table>
+        </div>
+        )}
+
+        {/* Tarjetas — mobile */}
+        {observaciones.length > 0 && (
+        <div className="md:hidden space-y-3">
+          {observaciones.map((o) => (
+            <div key={o.id} className="bg-gray-700/60 border border-gray-600 rounded-lg p-3 space-y-2">
+              <select
+                value={o.tipo}
+                onChange={(e) => setField(o.id, "tipo", e.target.value)}
+                className="bg-gray-700 p-2 rounded w-full"
+              >
+                <option value="hallazgo">⚠️ Hallazgo</option>
+                <option value="buena">✅ Buena práctica</option>
+                <option value="accion">🔧 Acción inmediata</option>
+              </select>
+              <textarea
+                value={o.descripcion}
+                onChange={(e) => setField(o.id, "descripcion", e.target.value)}
+                className="bg-gray-800 p-2 rounded w-full"
+                rows={2}
+                placeholder="Describe la observación..."
+              />
+              <input
+                type="text"
+                value={o.responsable}
+                onChange={(e) => setField(o.id, "responsable", e.target.value)}
+                className="bg-gray-800 p-2 rounded w-full"
+                placeholder="Responsable"
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={o.accionDerivada}
+                  onChange={(e) => setField(o.id, "accionDerivada", e.target.checked)}
+                />
+                Tiene acción derivada
+              </label>
+              <div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(o.id, e.target.files)}
+                  className="text-xs"
+                />
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {(o.evidencias || []).map((img, i) => (
+                    <img
+                      key={i}
+                      src={img.url}
+                      alt={img.name}
+                      className="w-14 h-14 object-cover rounded border border-gray-600"
+                    />
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={() => removeObs(o.id)}
+                className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs"
+              >
+                Eliminar
+              </button>
+            </div>
+          ))}
+        </div>
+        )}
       </div>
     </div>
   );

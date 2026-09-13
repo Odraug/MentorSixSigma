@@ -111,11 +111,19 @@ export const listarGembasEmpresa = async (req, res) => {
   }
 
   try {
+    // Se agregan conteos de observaciones y acciones derivadas pendientes
+    // por plan, para que el listado pueda mostrar un estado real sin tener
+    // que pedir el detalle completo de cada Gemba (N+1).
     const result = await pool.query(
       `
-      SELECT gp.*
+      SELECT
+        gp.*,
+        COUNT(go.id) AS observaciones_count,
+        COUNT(go.id) FILTER (WHERE go.accion_derivada = true) AS acciones_derivadas_count
       FROM public.gemba_planes gp
+      LEFT JOIN public.gemba_observaciones go ON go.gemba_id = gp.id
       WHERE gp.empresa_id = $1
+      GROUP BY gp.id
       ORDER BY gp.fecha DESC, gp.created_at DESC
     `,
       [empresaId]

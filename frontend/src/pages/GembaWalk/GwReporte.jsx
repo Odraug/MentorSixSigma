@@ -9,6 +9,10 @@ export default function GwReporte() {
   const navigate = useNavigate();
   const [plan, setPlan] = useState(null);
   const [observaciones, setObservaciones] = useState([]);
+  const [generando, setGenerando] = useState(false);
+  // true cuando el reporte se arma con el respaldo local porque no se pudo
+  // confirmar contra el servidor — el PDF podría no reflejar lo último guardado.
+  const [fuenteLocal, setFuenteLocal] = useState(false);
 
   useEffect(() => {
     const idStr = localStorage.getItem("gembaIdActual");
@@ -16,6 +20,7 @@ export default function GwReporte() {
 
     if (!idNum) {
       console.warn("No se encontró gembaIdActual para el reporte");
+      setFuenteLocal(true);
       const savedPlan = localStorage.getItem("gembaPlan");
       if (savedPlan) setPlan(JSON.parse(savedPlan));
       const savedObs = localStorage.getItem("gembaEjecucion");
@@ -29,6 +34,7 @@ export default function GwReporte() {
 
         if (!resp.ok || !resp.gemba) {
           console.error("Error API obtener gemba:", resp);
+          setFuenteLocal(true);
           const savedPlan = localStorage.getItem("gembaPlan");
           if (savedPlan) setPlan(JSON.parse(savedPlan));
           const savedObs = localStorage.getItem("gembaEjecucion");
@@ -155,7 +161,8 @@ export default function GwReporte() {
 
   // === Generar PDF ===
   const generarPDF = async () => {
-    if (!plan) return;
+    if (!plan || generando) return;
+    setGenerando(true);
 
     const doc = new jsPDF();
     const fechaHoy = new Date().toLocaleDateString("es-CL");
@@ -234,6 +241,7 @@ export default function GwReporte() {
 
     // --- Guardar ---
     doc.save(`GembaWalk_${plan.area || "reporte"}.pdf`);
+    setGenerando(false);
   };
 
   // === Render (pantalla) ===
@@ -253,9 +261,9 @@ export default function GwReporte() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-yellow-400">
+    <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold text-yellow-400">
           📄 Reporte Gemba Walk
         </h1>
         <div className="flex gap-2">
@@ -267,12 +275,19 @@ export default function GwReporte() {
           </button>
           <button
             onClick={generarPDF}
-            className="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg"
+            disabled={generando}
+            className="bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed px-3 py-2 rounded-lg"
           >
-            Generar PDF
+            {generando ? "Generando..." : "Generar PDF"}
           </button>
         </div>
       </div>
+
+      {fuenteLocal && (
+        <div className="mb-6 bg-amber-900/30 border border-amber-600 rounded-lg p-3 text-sm text-amber-300">
+          ⚠️ No se pudo confirmar esta información contra el servidor — el reporte se arma con la última copia guardada en este navegador, que podría no estar actualizada.
+        </div>
+      )}
 
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
         <h2 className="text-xl text-yellow-300 mb-4">

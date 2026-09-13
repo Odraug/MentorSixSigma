@@ -86,14 +86,30 @@ export default function GwListado() {
               ? new Date(plan.fecha).toLocaleDateString("es-CL")
               : "-";
 
+            // Estado aproximado a partir de los conteos que ya trae el listado
+            // (evita pedir el detalle completo de cada Gemba solo para saber
+            // si tiene observaciones cargadas).
+            const totalObs = Number(plan.observaciones_count) || 0;
+            const accionesPendientes = Number(plan.acciones_derivadas_count) || 0;
+            const estado = totalObs === 0 ? "Sin ejecutar" : "En curso";
+            const colorEstado =
+              totalObs === 0
+                ? "bg-gray-600 text-gray-200"
+                : "bg-blue-600 text-blue-100";
+
             return (
               <div
                 key={plan.id}
                 className="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-lg"
               >
-                <h2 className="text-xl font-bold mb-1 text-white">
-                  {plan.proposito || "Gemba sin título"}
-                </h2>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h2 className="text-xl font-bold text-white">
+                    {plan.proposito || "Gemba sin título"}
+                  </h2>
+                  <span className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${colorEstado}`}>
+                    {estado}
+                  </span>
+                </div>
 
                 <p className="text-sm text-gray-300">
                   <strong>Área:</strong> {plan.area}
@@ -104,6 +120,15 @@ export default function GwListado() {
                 <p className="text-sm text-gray-400">
                   <strong>Fecha:</strong> {fechaLegible}
                 </p>
+
+                {totalObs > 0 && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    🗒️ {totalObs} observación{totalObs === 1 ? "" : "es"} registrada{totalObs === 1 ? "" : "s"}
+                    {accionesPendientes > 0 && (
+                      <span className="text-yellow-400"> · ⚡ {accionesPendientes} con acción derivada</span>
+                    )}
+                  </p>
+                )}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {/* Similar a Implementación / Seguimiento / Auditoría en 5S */}
