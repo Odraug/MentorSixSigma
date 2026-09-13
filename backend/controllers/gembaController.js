@@ -119,7 +119,13 @@ export const listarGembasEmpresa = async (req, res) => {
       SELECT
         gp.*,
         COUNT(go.id) AS observaciones_count,
-        COUNT(go.id) FILTER (WHERE go.accion_derivada = true) AS acciones_derivadas_count
+        COUNT(go.id) FILTER (WHERE go.accion_derivada = true) AS acciones_derivadas_count,
+        COUNT(go.id) FILTER (
+          WHERE go.accion_derivada = true
+            AND go.fecha_limite IS NOT NULL
+            AND go.fecha_limite < CURRENT_DATE
+            AND COALESCE(go.estado_accion, 'Pendiente') <> 'Completada'
+        ) AS acciones_vencidas_count
       FROM public.gemba_planes gp
       LEFT JOIN public.gemba_observaciones go ON go.gemba_id = gp.id
       WHERE gp.empresa_id = $1
@@ -178,7 +184,7 @@ export const obtenerGembaPorId = async (req, res) => {
     // 3) Observaciones
     const obsRes = await pool.query(
       `
-      SELECT id, tipo, descripcion, responsable, accion_derivada, evidencias, fecha_registro
+      SELECT id, tipo, descripcion, responsable, accion_derivada, evidencias, fecha_registro, fecha_limite, estado_accion
       FROM public.gemba_observaciones
       WHERE gemba_id = $1
       ORDER BY fecha_registro ASC, id ASC
@@ -251,7 +257,7 @@ export const guardarEjecucionGemba = async (req, res) => {
       observaciones.forEach((o) => {
         if (!o) return;
         values.push(
-          `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`
+          `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`
         );
         params.push(
           id,
@@ -259,7 +265,9 @@ export const guardarEjecucionGemba = async (req, res) => {
           o.descripcion || null,
           o.responsable || null,
           o.accion_derivada ?? false,
-          o.evidencias ? JSON.stringify(o.evidencias) : "[]" // jsonb
+          o.evidencias ? JSON.stringify(o.evidencias) : "[]", // jsonb
+          o.fecha_limite || null,
+          o.estado_accion || "Pendiente"
         );
       });
 
@@ -267,7 +275,7 @@ export const guardarEjecucionGemba = async (req, res) => {
         await client.query(
           `
           INSERT INTO public.gemba_observaciones
-            (gemba_id, tipo, descripcion, responsable, accion_derivada, evidencias)
+            (gemba_id, tipo, descripcion, responsable, accion_derivada, evidencias, fecha_limite, estado_accion)
           VALUES ${values.join(",")}
         `,
           params

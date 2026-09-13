@@ -61,6 +61,8 @@ export default function GwReporte() {
             responsable: o.responsable || "",
             accionDerivada: o.accion_derivada,
             evidencias: o.evidencias || [],
+            fechaLimite: o.fecha_limite ? String(o.fecha_limite).slice(0, 10) : "",
+            estadoAccion: o.estado_accion || "Pendiente",
           }))
         );
       } catch (err) {
@@ -219,7 +221,9 @@ export default function GwReporte() {
           : "Acción inmediata",
         o.descripcion || "-",
         o.responsable || "-",
-        o.accionDerivada ? "Sí" : "No",
+        o.accionDerivada
+          ? `Sí (${o.estadoAccion || "Pendiente"}${o.fechaLimite ? `, ${o.fechaLimite}` : ""})`
+          : "No",
       ]);
 
       autoTable(doc, {
@@ -330,7 +334,8 @@ export default function GwReporte() {
                 : {o.descripcion} ({o.responsable})
                 {o.accionDerivada && (
                   <span className="text-yellow-400 ml-1">
-                    ⚡ Acción derivada
+                    ⚡ Acción derivada — {o.estadoAccion || "Pendiente"}
+                    {o.fechaLimite ? ` (límite: ${o.fechaLimite})` : ""}
                   </span>
                 )}
               </div>

@@ -74,6 +74,8 @@ export default function GwEjecucion() {
           responsable: o.responsable || "",
           accionDerivada: o.accion_derivada,
           evidencias: o.evidencias || [],
+          fechaLimite: o.fecha_limite ? String(o.fecha_limite).slice(0, 10) : "",
+          estadoAccion: o.estado_accion || "Pendiente",
         }));
 
         setObservaciones(limpiarEvidencias(obsBack));
@@ -116,6 +118,8 @@ export default function GwEjecucion() {
         responsable: "",
         accionDerivada: false,
         evidencias: [],
+        fechaLimite: "",
+        estadoAccion: "Pendiente",
       },
     ]);
   };
@@ -123,6 +127,16 @@ export default function GwEjecucion() {
   // 🗑️ Eliminar observación
   const removeObs = (id) =>
     setObservaciones((prev) => prev.filter((o) => o.id !== id));
+
+  const hoy = new Date().toISOString().slice(0, 10);
+  const estaVencida = (o) =>
+    o.accionDerivada && o.fechaLimite && o.fechaLimite < hoy && o.estadoAccion !== "Completada";
+
+  const colorEstadoAccion = {
+    Pendiente: "bg-gray-600 text-gray-200",
+    "En progreso": "bg-blue-600 text-blue-100",
+    Completada: "bg-green-600 text-green-100",
+  };
 
   // 📝 Actualizar campo
   const setField = (id, field, value) => {
@@ -183,6 +197,8 @@ export default function GwEjecucion() {
           responsable: o.responsable,
           accion_derivada: o.accionDerivada,
           evidencias: o.evidencias,
+          fecha_limite: o.fechaLimite || null,
+          estado_accion: o.estadoAccion || "Pendiente",
         })),
       };
 
@@ -328,7 +344,7 @@ export default function GwEjecucion() {
           </thead>
           <tbody>
               {observaciones.map((o) => (
-                <tr key={o.id} className="align-top">
+                <tr key={o.id} className={`align-top ${estaVencida(o) ? "bg-red-900/20" : ""}`}>
                   <td className="p-2 border border-gray-700">
                     <select
                       value={o.tipo}
@@ -360,14 +376,36 @@ export default function GwEjecucion() {
                       className="bg-gray-700 p-1 rounded w-full"
                     />
                   </td>
-                  <td className="p-2 border border-gray-700 text-center">
-                    <input
-                      type="checkbox"
-                      checked={o.accionDerivada}
-                      onChange={(e) =>
-                        setField(o.id, "accionDerivada", e.target.checked)
-                      }
-                    />
+                  <td className="p-2 border border-gray-700">
+                    <label className="flex items-center justify-center gap-1 mb-1">
+                      <input
+                        type="checkbox"
+                        checked={o.accionDerivada}
+                        onChange={(e) =>
+                          setField(o.id, "accionDerivada", e.target.checked)
+                        }
+                      />
+                    </label>
+                    {o.accionDerivada && (
+                      <div className="space-y-1 mt-1">
+                        <input
+                          type="date"
+                          value={o.fechaLimite}
+                          onChange={(e) => setField(o.id, "fechaLimite", e.target.value)}
+                          className="bg-gray-700 p-1 rounded w-full text-xs"
+                        />
+                        <select
+                          value={o.estadoAccion}
+                          onChange={(e) => setField(o.id, "estadoAccion", e.target.value)}
+                          className={`p-1 rounded w-full text-xs ${colorEstadoAccion[o.estadoAccion] || "bg-gray-700"}`}
+                        >
+                          <option>Pendiente</option>
+                          <option>En progreso</option>
+                          <option>Completada</option>
+                        </select>
+                        {estaVencida(o) && <span className="block text-[11px] text-red-400">⚠️ vencida</span>}
+                      </div>
+                    )}
                   </td>
                   <td className="p-2 border border-gray-700">
                     <input
@@ -409,7 +447,7 @@ export default function GwEjecucion() {
         {observaciones.length > 0 && (
         <div className="md:hidden space-y-3">
           {observaciones.map((o) => (
-            <div key={o.id} className="bg-gray-700/60 border border-gray-600 rounded-lg p-3 space-y-2">
+            <div key={o.id} className={`border rounded-lg p-3 space-y-2 ${estaVencida(o) ? "bg-red-900/20 border-red-700" : "bg-gray-700/60 border-gray-600"}`}>
               <select
                 value={o.tipo}
                 onChange={(e) => setField(o.id, "tipo", e.target.value)}
@@ -441,6 +479,26 @@ export default function GwEjecucion() {
                 />
                 Tiene acción derivada
               </label>
+              {o.accionDerivada && (
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={o.fechaLimite}
+                    onChange={(e) => setField(o.id, "fechaLimite", e.target.value)}
+                    className="bg-gray-800 p-2 rounded flex-1 min-w-0 text-sm"
+                  />
+                  <select
+                    value={o.estadoAccion}
+                    onChange={(e) => setField(o.id, "estadoAccion", e.target.value)}
+                    className={`p-2 rounded text-sm ${colorEstadoAccion[o.estadoAccion] || "bg-gray-800"}`}
+                  >
+                    <option>Pendiente</option>
+                    <option>En progreso</option>
+                    <option>Completada</option>
+                  </select>
+                </div>
+              )}
+              {estaVencida(o) && <p className="text-xs text-red-400">⚠️ Esta acción está vencida</p>}
               <div>
                 <input
                   type="file"

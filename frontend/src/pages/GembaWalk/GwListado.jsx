@@ -91,6 +91,7 @@ export default function GwListado() {
             // si tiene observaciones cargadas).
             const totalObs = Number(plan.observaciones_count) || 0;
             const accionesPendientes = Number(plan.acciones_derivadas_count) || 0;
+            const accionesVencidas = Number(plan.acciones_vencidas_count) || 0;
             const estado = totalObs === 0 ? "Sin ejecutar" : "En curso";
             const colorEstado =
               totalObs === 0
@@ -121,8 +122,14 @@ export default function GwListado() {
                   <strong>Fecha:</strong> {fechaLegible}
                 </p>
 
+                {accionesVencidas > 0 && (
+                  <p className="text-xs text-red-400 font-medium mt-2">
+                    ⚠️ {accionesVencidas} acción{accionesVencidas === 1 ? "" : "es"} vencida{accionesVencidas === 1 ? "" : "s"}
+                  </p>
+                )}
+
                 {totalObs > 0 && (
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-gray-400 mt-1">
                     🗒️ {totalObs} observación{totalObs === 1 ? "" : "es"} registrada{totalObs === 1 ? "" : "s"}
                     {accionesPendientes > 0 && (
                       <span className="text-yellow-400"> · ⚡ {accionesPendientes} con acción derivada</span>
