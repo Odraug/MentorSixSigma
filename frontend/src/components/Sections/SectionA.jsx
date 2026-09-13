@@ -130,40 +130,94 @@ export default function SectionA({ a3, setA3, goTo, setMessage }) {
       <div className="mb-3">
         <label className="text-sm text-gray-400 font-semibold">3. Análisis 5W2H</label>
 
+        {/* Ayuda: esta tabla es la herramienta "Es / No es" para acotar el
+            problema, no una pregunta de sí-o-no. Se explica una sola vez
+            acá arriba y cada fila trae un ejemplo como placeholder. */}
+        <div className="mt-2 mb-2 bg-gray-900/60 border border-indigo-600/40 rounded-lg p-3 text-sm text-gray-300">
+          <p className="font-semibold text-indigo-300 mb-1">💡 ¿Qué anoto en cada columna?</p>
+          <p>
+            No es una pregunta de sí/no: es la técnica <span className="text-white font-medium">"Es / No es"</span> para delimitar el problema.
+          </p>
+          <p className="mt-1">
+            <span className="text-green-400 font-medium">Es</span>: lo que SÍ forma parte del problema, con datos concretos.{" "}
+            <span className="text-red-400 font-medium">No es</span>: algo parecido pero que NO es el problema, para descartarlo del análisis.
+          </p>
+          <p className="mt-1 text-gray-400 italic">
+            Ej. en "Qué" → Es: "Demoras en el despacho de pedidos urgentes". No es: "Demoras en pedidos programados con anticipación".
+          </p>
+        </div>
+
         <table className="w-full mt-2 text-left border border-gray-600">
           <thead>
             <tr className="bg-gray-700 text-gray-200">
               <th className="px-2 py-1 border text-center">Elemento</th>
-              <th className="px-2 py-1 border text-center">Si</th>
-              <th className="px-2 py-1 border text-center">No</th>
+              <th className="px-2 py-1 border text-center">Es <span className="font-normal text-gray-400">(sí aplica)</span></th>
+              <th className="px-2 py-1 border text-center">No es <span className="font-normal text-gray-400">(no aplica)</span></th>
             </tr>
           </thead>
           <tbody>
             {[
-              { key: "que", label: "Qué" },
-              { key: "cuando", label: "Cuándo" },
-              { key: "donde", label: "Dónde" },
-              { key: "quien", label: "Quién" },
-              { key: "como", label: "Cómo" },
-              { key: "cuantos", label: "Cuántos" },
-              { key: "por_que", label: "Por qué" },
-            ].map(({ key, label }) => (
+              {
+                key: "que",
+                label: "Qué",
+                phEs: "Ej: Demoras en el despacho de pedidos urgentes",
+                phNoEs: "Ej: Demoras en pedidos programados con anticipación",
+              },
+              {
+                key: "cuando",
+                label: "Cuándo",
+                phEs: "Ej: Ocurre en el turno tarde",
+                phNoEs: "Ej: No ocurre en el turno mañana",
+              },
+              {
+                key: "donde",
+                label: "Dónde",
+                phEs: "Ej: En el área de picking",
+                phNoEs: "Ej: No se observa en despacho",
+              },
+              {
+                key: "quien",
+                label: "Quién",
+                phEs: "Ej: Afecta a operarios nuevos",
+                phNoEs: "Ej: No afecta a operarios con experiencia",
+              },
+              {
+                key: "como",
+                label: "Cómo",
+                phEs: "Ej: Se detecta al escanear el pedido",
+                phNoEs: "Ej: No se detecta en el control de calidad previo",
+              },
+              {
+                key: "cuantos",
+                label: "Cuántos",
+                phEs: "Ej: 15 pedidos por semana",
+                phNoEs: "Ej: No supera los 3 pedidos por día",
+              },
+              {
+                key: "por_que",
+                label: "Por qué",
+                phEs: "Ej: Falta de personal capacitado en el turno",
+                phNoEs: "Ej: No es por falla del sistema",
+              },
+            ].map(({ key, label, phEs, phNoEs }) => (
               <tr key={key}>
                 <td className="px-2 py-1 border font-medium">{label}</td>
                 <td className="px-2 py-1 border">
                   <textarea
                     value={a3?.analisis5W2H?.[key]?.es || ""}
                     onChange={(e) => set5W2H(a3, setA3, key, "es", e.target.value)}
-                    className="w-full p-1 rounded bg-gray-700 text-white"
+                    className="w-full p-1 rounded bg-gray-700 text-white placeholder-gray-500"
                     rows={2}
+                    placeholder={phEs}
                   />
                 </td>
                 <td className="px-2 py-1 border">
                   <textarea
                     value={a3?.analisis5W2H?.[key]?.noEs || ""}
                     onChange={(e) => set5W2H(a3, setA3, key, "noEs", e.target.value)}
-                    className="w-full p-1 rounded bg-gray-700 text-white"
+                    className="w-full p-1 rounded bg-gray-700 text-white placeholder-gray-500"
                     rows={2}
+                    placeholder={phNoEs}
                   />
                 </td>
               </tr>
