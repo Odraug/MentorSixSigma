@@ -19,6 +19,7 @@ import iconAdminRoles from "../img/modulos/icon-admin-roles.png";
 import iconAdminEmpresas from "../img/modulos/icon-admin-empresas.png";
 import iconAdminModulos from "../img/modulos/icon-admin-modulos.png";
 import iconAdminConsultas from "../img/modulos/icon-admin-consultas.png";
+import iconDiagnostico from "../img/modulos/icon-diagnostico.png";
 
 // Iconos propios de MentorSuites por nombre de módulo; el resto usa un ícono genérico.
 const ICONOS_POR_MODULO = {
@@ -43,6 +44,8 @@ const ICONOS_POR_MODULO = {
   "módulos": iconAdminModulos,
   "modulos": iconAdminModulos,
   "consultas": iconAdminConsultas,
+  "diagnóstico rápido": iconDiagnostico,
+  "diagnostico rapido": iconDiagnostico,
 };
 
 const quitarAcentos = (s = "") =>
