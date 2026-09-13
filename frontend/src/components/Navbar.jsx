@@ -6,16 +6,19 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const { usuario, logout } = useAuth();
+  const { usuario } = useAuth();
 
   // 🔹 Logout
-  // Usamos una navegación dura (window.location) en vez de navigate() de
-  // React Router: al limpiar el usuario, ProtectedRoute/ProtectedLayout
-  // reaccionan al mismo tiempo que el router intenta ir a "/", y a veces
-  // ganaban la carrera mandando al usuario a /login en vez de a la landing.
+  // No llamamos a logout() del context acá: eso dispara setUsuario(null) en
+  // React, y mientras seguimos parados en una ruta protegida, ProtectedRoute/
+  // ProtectedLayout reaccionan a ese cambio y redirigen a /login vía React
+  // Router antes de que la navegación dura a "/" llegue a aplicarse. Como de
+  // todas formas vamos a recargar la página completa, alcanza con limpiar el
+  // storage directamente: AuthContext arranca en null de nuevo al recargar.
   const handleLogout = () => {
     if (window.confirm("¿Deseas cerrar sesión?")) {
-      logout();
+      localStorage.removeItem("token");
+      localStorage.removeItem("empresaId");
       window.location.href = "/";
     }
   };
