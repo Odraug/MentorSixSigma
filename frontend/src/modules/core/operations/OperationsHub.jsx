@@ -47,6 +47,41 @@ export default function OperationsHub() {
       description: "Visión global de la operación",
       path: "/core/control-tower",
       color: "bg-gray-700"
+    },
+
+    {
+      title: "TMS — Transporte",
+      description: "Cargas, despacho y seguimiento de flota",
+      path: "/core/tms",
+      color: "bg-sky-600"
+    },
+
+    {
+      title: "Flota y Transportistas",
+      description: "Transportistas, vehículos y conductores",
+      path: "/core/tms/flota",
+      color: "bg-cyan-700"
+    },
+
+    {
+      title: "Yard Management",
+      description: "Control de patio: muelles y check-in/out",
+      path: "/core/yard",
+      color: "bg-amber-600"
+    },
+
+    {
+      title: "Diseñador de Layout",
+      description: "Diseña y visualiza el layout de la bodega",
+      path: "/core/wms/layout-designer",
+      color: "bg-teal-600"
+    },
+
+    {
+      title: "Análisis ABC/XYZ",
+      description: "Clasificación de SKUs por rotación y variabilidad",
+      path: "/analisis/abc-xyz",
+      color: "bg-rose-600"
     }
 
   ];
