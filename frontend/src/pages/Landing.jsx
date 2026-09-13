@@ -2,7 +2,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import logoprincipal from "../img/LogoMentorSuites2.png";
+import logoprincipal from "../img/Logo_ODRAUG_transparent.png";
+import logoMentorSuites from "../img/Logo_Login_transparent.png";
 import iconA3 from "../img/modulos/icon-a3.png";
 import icon5s from "../img/modulos/icon-5s.png";
 import iconGemba from "../img/modulos/icon-gemba.png";
@@ -74,7 +75,7 @@ const Landing = () => {
       <div className="fixed inset-0 z-10 flex items-center justify-center pt-16 pointer-events-none">
         <motion.img
           src={logoprincipal}
-          alt="MentorSuites"
+          alt="ODRAUG Smart Logistics"
           style={{ scale: logoScale, opacity: logoOpacity, y: logoY }}
           className="h-[calc(100vh-4rem)] w-[96vw] object-contain select-none drop-shadow-2xl"
         />
@@ -87,12 +88,60 @@ const Landing = () => {
       <section className="py-24 px-8 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-center">
         <h2 className="text-4xl font-bold mb-10 text-indigo-600 dark:text-indigo-400">Quiénes Somos</h2>
         <p className="max-w-3xl mx-auto text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-          Somos un equipo apasionado por la mejora continua. MentorSuites nace
-          con el propósito de digitalizar las metodologías de excelencia
-          operacional y facilitar la toma de decisiones basada en datos. Nuestra
-          misión es transformar la cultura de mejora en una experiencia digital,
-          colaborativa e intuitiva.
+          Somos ODRAUG SMART LOGISTICS, una empresa de tecnología dedicada a
+          conectar operaciones, personas y datos. Desarrollamos plataformas
+          digitales como MentorSuites y SGP para transformar la manera en que
+          las empresas gestionan sus procesos, su gente y su mejora continua.
         </p>
+      </section>
+
+      {/* 🧩 NUESTRAS PLATAFORMAS */}
+      <section className="py-24 px-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-center">
+        <h2 className="text-4xl font-bold mb-4 text-indigo-600 dark:text-indigo-400">Nuestras Plataformas</h2>
+        <p className="max-w-2xl mx-auto text-gray-600 dark:text-gray-300 mb-14">
+          Un ecosistema digital para tus operaciones y tu gente. Cada plataforma resuelve un problema distinto — juntas, transforman tu gestión.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <motion.div
+            whileHover={{ scale: 1.03, y: -5 }}
+            className="p-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-transparent rounded-2xl shadow-lg text-left"
+          >
+            <img src={logoMentorSuites} alt="MentorSuites" className="h-16 w-auto mb-4" />
+            <h3 className="text-2xl font-bold text-indigo-600 dark:text-indigo-300 mb-2">MentorSuites</h3>
+            <p className="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+              Excelencia Operacional
+            </p>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Digitaliza Lean, Six Sigma y mejora continua: A3, 5S, Gemba Walk, VSM, SIPOC, OEE y más — guiado paso a paso.
+            </p>
+            <Link
+              to="/login"
+              className="inline-block bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition"
+            >
+              Entrar →
+            </Link>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ scale: 1.03, y: -5 }}
+            className="p-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-transparent rounded-2xl shadow-lg text-left"
+          >
+            <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-blue-500 to-green-400 flex items-center justify-center text-white font-bold text-xl mb-4">
+              SGP
+            </div>
+            <h3 className="text-2xl font-bold text-indigo-600 dark:text-indigo-300 mb-2">SGP</h3>
+            <p className="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+              Gestión de Personas
+            </p>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Asistencia, turnos, nómina y gestión documental de tu equipo, con trazabilidad completa.
+            </p>
+            <span className="inline-block bg-gray-300 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-6 py-2.5 rounded-lg font-semibold cursor-not-allowed">
+              Próximamente
+            </span>
+          </motion.div>
+        </div>
       </section>
 
       {/* 🧭 MISIÓN / VISIÓN / VALORES */}
@@ -105,7 +154,7 @@ const Landing = () => {
           },
           {
             title: "Visión",
-            text: "Ser la suite líder en transformación digital de procesos Lean y mejora continua en Latinoamérica y el mundo.",
+            text: "Ser el ecosistema tecnológico líder en transformación digital de operaciones, personas y logística en Latinoamérica.",
             icon: iconVision,
           },
           {
@@ -128,9 +177,10 @@ const Landing = () => {
 
       {/* 💼 DEMO DE MÓDULOS (del Home.jsx) */}
       <section className="py-24 px-6 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-center">
-        <h2 className="text-3xl font-bold mb-12 text-indigo-600 dark:text-indigo-400">
-          Tus módulos de Excelencia Operacional
+        <h2 className="text-3xl font-bold mb-2 text-indigo-600 dark:text-indigo-400">
+          Módulos de MentorSuites
         </h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-10">Tu plataforma de Excelencia Operacional</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 max-w-6xl mx-auto">
           {modulosPreview.map(({ title, text, icon }, i) => (

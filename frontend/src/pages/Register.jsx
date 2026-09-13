@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "react-phone-input-2/lib/style.css";
 import PhoneInput from "react-phone-input-2";
-import logoprincipal from "../img/logoppl2.png";
+import logoprincipal from "../img/Logo_ODRAUG_emblema_transparent.png";
 import { API_BASE } from '../config/env';
 
 const Register = () => {
@@ -83,8 +83,8 @@ try {
       <div className="flex flex-col items-center mb-6">
         <img
           src={logoprincipal}
-          alt="Logo MentorSuites"
-          className="h-20 w-auto mb-2 dark:brightness-200 cursor-pointer"
+          alt="ODRAUG Smart Logistics"
+          className="h-20 w-auto mb-2 cursor-pointer"
           onClick={() => navigate("/")}
         />
       </div>

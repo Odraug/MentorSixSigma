@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logoprincipal from "../img/Logo_Login_transparent.png";
+import logoprincipal from "../img/Logo_ODRAUG_emblema_transparent.png";
 import { API_BASE } from "../config/env";
 import { useAuth } from "../context/AuthContext";
 
@@ -89,7 +89,7 @@ export default function Login() {
         <div className="flex flex-col items-center mb-6">
           <img
             src={logoprincipal}
-            alt="Logo MentorSuites"
+            alt="ODRAUG Smart Logistics"
             className="h-24 w-auto mb-2 cursor-pointer"
             onClick={() => navigate("/")}
           />

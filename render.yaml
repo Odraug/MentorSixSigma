@@ -1,8 +1,62 @@
+databases:
+  - name: mentorsuites-db
+    plan: free
+    databaseName: mentorsuites_produccion
+    user: mentorsuites
+
 services:
   - type: web
     name: mentorsuites-backend
     env: node
+    plan: free
     rootDir: backend
     buildCommand: "npm install"
     startCommand: "npm start"
     autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PGHOST
+        fromDatabase:
+          name: mentorsuites-db
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: mentorsuites-db
+          property: port
+      - key: PGDATABASE
+        fromDatabase:
+          name: mentorsuites-db
+          property: database
+      - key: PGUSER
+        fromDatabase:
+          name: mentorsuites-db
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: mentorsuites-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DEFAULT_EMPRESA_ID
+        value: "1"
+
+  - type: web
+    name: mentorsuites-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: ./build
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
