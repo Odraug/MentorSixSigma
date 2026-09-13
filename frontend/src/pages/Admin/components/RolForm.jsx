@@ -16,7 +16,7 @@ export default function RolForm({ rolEditando, onGuardar, onCancelar }) {
   /* ✅ Cargar lista de módulos disponibles */
   const cargarModulos = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/modulos`, {
+      const res = await axios.get(`${API_BASE}/api/modulos`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setModulos(res.data);
@@ -29,7 +29,7 @@ export default function RolForm({ rolEditando, onGuardar, onCancelar }) {
   const cargarModulosDelRol = async (rolId) => {
     if (!rolId) return;
     try {
-      const res = await axios.get(`${API_BASE}/roles-modulos/${rolId}`, {
+      const res = await axios.get(`${API_BASE}/api/roles-modulos/rol/${rolId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const activos = res.data.filter((m) => m.activo).map((m) => m.nombre);
@@ -63,10 +63,10 @@ export default function RolForm({ rolEditando, onGuardar, onCancelar }) {
     try {
       // Guardar o actualizar el rol
       const rolRes = rol.id
-        ? await axios.put(`${API_BASE}/roles/${rol.id}`, rol, {
+        ? await axios.put(`${API_BASE}/api/roles/${rol.id}`, rol, {
             headers: { Authorization: `Bearer ${token}` },
           })
-        : await axios.post(`${API_BASE}/roles`, rol, {
+        : await axios.post(`${API_BASE}/api/roles`, rol, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -77,7 +77,7 @@ export default function RolForm({ rolEditando, onGuardar, onCancelar }) {
         modulos.map(async (m) => {
           const activo = rol.modulos.includes(m.nombre);
           await axios.post(
-            `${API_BASE}/roles-modulos`,
+            `${API_BASE}/api/roles-modulos`,
             {
               rol_id: rolId,
               modulo_id: m.id,
