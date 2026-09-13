@@ -4,6 +4,53 @@ import { update, set5W2H, setResumen5W2H } from "../../utils/a3Helpers";
 import A3Header from "../A3Header";
 import { API_BASE } from '../../config/env';
 
+// Las 7 dimensiones del análisis "Es / No es". Vive fuera del componente
+// para poder usarla tanto al renderizar la tabla como al calcular cuántas
+// dimensiones quedaron caracterizadas.
+const DIMENSIONES_5W2H = [
+  {
+    key: "que",
+    label: "Qué",
+    phEs: "Ej: Demoras en el despacho de pedidos urgentes",
+    phNoEs: "Ej: Demoras en pedidos programados con anticipación",
+  },
+  {
+    key: "cuando",
+    label: "Cuándo",
+    phEs: "Ej: Ocurre en el turno tarde",
+    phNoEs: "Ej: No ocurre en el turno mañana",
+  },
+  {
+    key: "donde",
+    label: "Dónde",
+    phEs: "Ej: En el área de picking",
+    phNoEs: "Ej: No se observa en despacho",
+  },
+  {
+    key: "quien",
+    label: "Quién",
+    phEs: "Ej: Afecta a operarios nuevos",
+    phNoEs: "Ej: No afecta a operarios con experiencia",
+  },
+  {
+    key: "como",
+    label: "Cómo",
+    phEs: "Ej: Se detecta al escanear el pedido",
+    phNoEs: "Ej: No se detecta en el control de calidad previo",
+  },
+  {
+    key: "cuantos",
+    label: "Cuántos",
+    phEs: "Ej: 15 pedidos por semana",
+    phNoEs: "Ej: No supera los 3 pedidos por día",
+  },
+  {
+    key: "por_que",
+    label: "Por qué",
+    phEs: "Ej: Falta de personal capacitado en el turno",
+    phNoEs: "Ej: No es por falla del sistema",
+  },
+];
 
 export default function SectionA({ a3, setA3, goTo, setMessage }) {
 
@@ -51,6 +98,17 @@ export default function SectionA({ a3, setA3, goTo, setMessage }) {
       return copy;
     });
   };
+
+  // 🔹 Completitud del 5W2H: una dimensión cuenta como caracterizada cuando
+  // tiene contenido en "Es" (lo que sí forma parte del problema). "No es"
+  // ayuda a acotar pero no es obligatorio para considerarla completa.
+  const dimensionesCompletas = DIMENSIONES_5W2H.filter(({ key }) =>
+    (a3?.analisis5W2H?.[key]?.es || "").trim()
+  );
+  const dimensionesFaltantes = DIMENSIONES_5W2H.filter(
+    ({ key }) => !(a3?.analisis5W2H?.[key]?.es || "").trim()
+  );
+  const analisisCompleto = dimensionesFaltantes.length === 0;
 
   return (
     <section className="w-full bg-gray-800 p-4 rounded-lg border border-gray-700 col-span-2">
@@ -156,50 +214,7 @@ export default function SectionA({ a3, setA3, goTo, setMessage }) {
             </tr>
           </thead>
           <tbody>
-            {[
-              {
-                key: "que",
-                label: "Qué",
-                phEs: "Ej: Demoras en el despacho de pedidos urgentes",
-                phNoEs: "Ej: Demoras en pedidos programados con anticipación",
-              },
-              {
-                key: "cuando",
-                label: "Cuándo",
-                phEs: "Ej: Ocurre en el turno tarde",
-                phNoEs: "Ej: No ocurre en el turno mañana",
-              },
-              {
-                key: "donde",
-                label: "Dónde",
-                phEs: "Ej: En el área de picking",
-                phNoEs: "Ej: No se observa en despacho",
-              },
-              {
-                key: "quien",
-                label: "Quién",
-                phEs: "Ej: Afecta a operarios nuevos",
-                phNoEs: "Ej: No afecta a operarios con experiencia",
-              },
-              {
-                key: "como",
-                label: "Cómo",
-                phEs: "Ej: Se detecta al escanear el pedido",
-                phNoEs: "Ej: No se detecta en el control de calidad previo",
-              },
-              {
-                key: "cuantos",
-                label: "Cuántos",
-                phEs: "Ej: 15 pedidos por semana",
-                phNoEs: "Ej: No supera los 3 pedidos por día",
-              },
-              {
-                key: "por_que",
-                label: "Por qué",
-                phEs: "Ej: Falta de personal capacitado en el turno",
-                phNoEs: "Ej: No es por falla del sistema",
-              },
-            ].map(({ key, label, phEs, phNoEs }) => (
+            {DIMENSIONES_5W2H.map(({ key, label, phEs, phNoEs }) => (
               <tr key={key}>
                 <td className="px-2 py-1 border font-medium">{label}</td>
                 <td className="px-2 py-1 border">
@@ -224,6 +239,36 @@ export default function SectionA({ a3, setA3, goTo, setMessage }) {
             ))}
           </tbody>
         </table>
+
+        {/* Indicador de completitud: cuántas dimensiones ya están
+            caracterizadas y cuáles faltan, para que el usuario no deje el
+            análisis a medias antes de pasar a causas. */}
+        <div
+          className={`mt-2 rounded-lg border p-3 text-sm ${
+            analisisCompleto
+              ? "bg-green-900/20 border-green-600/40"
+              : "bg-amber-900/20 border-amber-600/40"
+          }`}
+        >
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className={`font-semibold ${analisisCompleto ? "text-green-400" : "text-amber-400"}`}>
+              {analisisCompleto ? "✅" : "⚠️"} Problema caracterizado: {dimensionesCompletas.length}/{DIMENSIONES_5W2H.length} dimensiones
+            </span>
+            <div className="flex-1 min-w-[120px] max-w-[220px] h-2 rounded-full bg-gray-700 overflow-hidden">
+              <div
+                className={`h-full ${analisisCompleto ? "bg-green-500" : "bg-amber-500"}`}
+                style={{
+                  width: `${(dimensionesCompletas.length / DIMENSIONES_5W2H.length) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+          {!analisisCompleto && (
+            <p className="mt-2 text-gray-300">
+              Todavía falta completar: {dimensionesFaltantes.map((d) => d.label).join(", ")}.
+            </p>
+          )}
+        </div>
 
         {/* Resumen lectura 5W2H */}
 <div className="mt-2">
