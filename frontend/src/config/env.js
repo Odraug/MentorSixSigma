@@ -1,7 +1,7 @@
 // src/config/env.js
 
 // 🔹 Backend en Render (producción)
-const PROD_API = "https://mentorsuites-backend.onrender.com";
+const PROD_API = "https://mentorsuites-backend-a1uc.onrender.com";
 
 // 🔹 Backend local (desarrollo)
 const DEV_API = "http://localhost:5000";

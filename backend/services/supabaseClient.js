@@ -7,11 +7,13 @@ dotenv.config();
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // ← CORRECTO
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error("❌ ERROR: Supabase URL o Service Key no están configurados.");
-  console.error("SUPABASE_URL:", supabaseUrl);
-  console.error("SUPABASE_SERVICE_ROLE_KEY:", supabaseServiceKey);
-  process.exit(1);
-}
-
-export const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Supabase solo se usa hoy para subir evidencias fotográficas de 5S — no es
+// un requisito para que el resto del backend funcione, así que si no está
+// configurado avisamos por consola pero no tiramos abajo todo el servidor.
+export const supabase =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : (console.warn(
+        "⚠️ Supabase no está configurado (SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY). La subida de evidencias 5S no va a funcionar hasta que se configure."
+      ),
+      null);
