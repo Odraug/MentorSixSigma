@@ -42,52 +42,52 @@ const strOrNull = (v) => {
   return s === "" ? null : s;
 };
 
-/**
- * POST /api/inventario-ciclico/upload
- * Body (form-data): file
- */
-export const subirArchivoCiclico = async (req, res) => {
-  const client = await pool.connect();
+const COLS_STOCK = [
+  "upload_id", "empresa_id", "sku", "descripcion", "marca",
+  "depto", "desc_depto", "subdepto", "desc_subdepto", "familia", "desc_familia",
+  "cd", "whse", "ubicacion", "zona", "pasillo", "bahia", "nivel", "piso",
+  "qty", "stock_total", "stock_en_osr", "costo", "retail_price", "ventas",
+  "logistica_osr", "sugerencia_osr", "full_qty", "half_qty", "quarter_qty", "raw",
+];
+
+// Archivos reales son de decenas/cientos de miles de filas (SKU x ubicación).
+// Insertar todo antes de responder haría que la request HTTP se cuelgue o se
+// caiga por timeout del proxy. Por eso TODO lo pesado -- parsear el Excel
+// (puede tardar decenas de segundos con archivos de 100k+ filas) e
+// insertarlas -- corre en segundo plano después de responder al cliente,
+// y el frontend consulta el progreso con /estado.
+const procesarArchivoEnSegundoPlano = async (uploadId, empresaId, buffer) => {
+  let filas;
   try {
-    const empresaId = req.user?.empresa_id;
-    const usuarioId = req.user?.id;
-
-    if (!req.file) {
-      return res.status(400).json({ ok: false, message: "Archivo requerido" });
-    }
-    if (!empresaId) {
-      return res.status(400).json({ ok: false, message: "Falta empresa en el token" });
-    }
-
-    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const filas = XLSX.utils.sheet_to_json(sheet, { defval: null });
-
-    if (!filas.length) {
-      return res.status(400).json({ ok: false, message: "El archivo no tiene filas" });
-    }
-
-    await client.query("BEGIN");
-
-    const uploadRes = await client.query(
-      `INSERT INTO ciclico_uploads (empresa_id, nombre_archivo, filas_totales, subido_por)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [empresaId, req.file.originalname, filas.length, usuarioId]
+    filas = XLSX.utils.sheet_to_json(sheet, { defval: null });
+  } catch (error) {
+    console.error("❌ Error leyendo archivo Inventario Cíclico (upload " + uploadId + "):", error);
+    await pool.query(
+      `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
+      ["No se pudo leer el archivo. ¿Es un Excel válido?", uploadId]
     );
-    const uploadId = uploadRes.rows[0].id;
+    return;
+  }
 
-    const COLS = [
-      "upload_id", "empresa_id", "sku", "descripcion", "marca",
-      "depto", "desc_depto", "subdepto", "desc_subdepto", "familia", "desc_familia",
-      "cd", "whse", "ubicacion", "zona", "pasillo", "bahia", "nivel", "piso",
-      "qty", "stock_total", "stock_en_osr", "costo", "retail_price", "ventas",
-      "logistica_osr", "sugerencia_osr", "full_qty", "half_qty", "quarter_qty", "raw",
-    ];
+  if (!filas.length) {
+    await pool.query(
+      `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
+      ["El archivo no tiene filas", uploadId]
+    );
+    return;
+  }
 
-    let procesadas = 0;
-    const BATCH = 500;
+  await pool.query(`UPDATE ciclico_uploads SET filas_totales = $1 WHERE id = $2`, [
+    filas.length,
+    uploadId,
+  ]);
 
+  const BATCH = 1000;
+  let procesadas = 0;
+
+  try {
     for (let i = 0; i < filas.length; i += BATCH) {
       const lote = filas.slice(i, i + BATCH);
       const values = [];
@@ -139,32 +139,94 @@ export const subirArchivoCiclico = async (req, res) => {
       }
 
       if (values.length > 0) {
-        await client.query(
-          `INSERT INTO ciclico_stock (${COLS.join(",")}) VALUES ${values.join(",")}`,
+        await pool.query(
+          `INSERT INTO ciclico_stock (${COLS_STOCK.join(",")}) VALUES ${values.join(",")}`,
           params
         );
       }
+
+      // Progreso visible para el polling del frontend, lote a lote.
+      await pool.query(`UPDATE ciclico_uploads SET filas_procesadas = $1 WHERE id = $2`, [
+        procesadas,
+        uploadId,
+      ]);
     }
 
-    await client.query(
-      `UPDATE ciclico_uploads SET filas_procesadas = $1 WHERE id = $2`,
-      [procesadas, uploadId]
+    await pool.query(`UPDATE ciclico_uploads SET estado = 'listo' WHERE id = $1`, [uploadId]);
+  } catch (error) {
+    console.error("❌ Error procesando filas Inventario Cíclico (upload " + uploadId + "):", error);
+    await pool.query(
+      `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
+      [String(error.message || error).slice(0, 500), uploadId]
     );
+  }
+};
 
-    await client.query("COMMIT");
+/**
+ * POST /api/inventario-ciclico/upload
+ * Body (form-data): file
+ * Responde apenas se crea el registro de carga; el procesamiento pesado
+ * sigue en segundo plano (ver /estado para el progreso).
+ */
+export const subirArchivoCiclico = async (req, res) => {
+  try {
+    const empresaId = req.user?.empresa_id;
+    const usuarioId = req.user?.id;
 
-    res.status(201).json({
+    if (!req.file) {
+      return res.status(400).json({ ok: false, message: "Archivo requerido" });
+    }
+    if (!empresaId) {
+      return res.status(400).json({ ok: false, message: "Falta empresa en el token" });
+    }
+
+    // Todavía no se lee el archivo acá: con 100k+ filas, parsearlo solo ya
+    // puede tardar decenas de segundos y no queremos bloquear la respuesta.
+    const uploadRes = await pool.query(
+      `INSERT INTO ciclico_uploads (empresa_id, nombre_archivo, filas_totales, subido_por, estado)
+       VALUES ($1, $2, 0, $3, 'procesando')
+       RETURNING id`,
+      [empresaId, req.file.originalname, usuarioId]
+    );
+    const uploadId = uploadRes.rows[0].id;
+
+    res.status(202).json({
       ok: true,
       upload_id: uploadId,
-      filas_totales: filas.length,
-      filas_procesadas: procesadas,
+      estado: "procesando",
     });
+
+    // No se espera (await) esta llamada: sigue corriendo después de responder.
+    procesarArchivoEnSegundoPlano(uploadId, empresaId, req.file.buffer);
   } catch (error) {
-    await client.query("ROLLBACK");
     console.error("❌ Error subiendo archivo Inventario Cíclico:", error);
     res.status(500).json({ ok: false, message: "Error procesando el archivo" });
-  } finally {
-    client.release();
+  }
+};
+
+/**
+ * GET /api/inventario-ciclico/:uploadId/estado
+ * Para hacer polling del progreso de una carga grande.
+ */
+export const obtenerEstadoCiclico = async (req, res) => {
+  try {
+    const empresaId = req.user?.empresa_id;
+    const { uploadId } = req.params;
+
+    const { rows } = await pool.query(
+      `SELECT id, filas_totales, filas_procesadas, estado, error_mensaje
+       FROM ciclico_uploads WHERE id = $1 AND empresa_id = $2`,
+      [uploadId, empresaId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ ok: false, message: "Carga no encontrada" });
+    }
+
+    res.json({ ok: true, ...rows[0] });
+  } catch (error) {
+    console.error("❌ Error consultando estado Inventario Cíclico:", error);
+    res.status(500).json({ ok: false, message: "Error consultando el estado" });
   }
 };
 
@@ -175,7 +237,7 @@ export const listarUploadsCiclico = async (req, res) => {
   try {
     const empresaId = req.user?.empresa_id;
     const { rows } = await pool.query(
-      `SELECT id, nombre_archivo, filas_totales, filas_procesadas, creado_en
+      `SELECT id, nombre_archivo, filas_totales, filas_procesadas, estado, creado_en
        FROM ciclico_uploads
        WHERE empresa_id = $1
        ORDER BY creado_en DESC

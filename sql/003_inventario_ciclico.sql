@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS ciclico_uploads (
   nombre_archivo  TEXT,
   filas_totales   INTEGER DEFAULT 0,
   filas_procesadas INTEGER DEFAULT 0,
+  -- 'procesando' | 'listo' | 'error'. Archivos grandes (cientos de miles de
+  -- filas) se insertan en segundo plano después de responder al cliente,
+  -- para no colgar la request HTTP ni agotar memoria de golpe.
+  estado          TEXT DEFAULT 'procesando',
+  error_mensaje   TEXT,
   subido_por      INTEGER,
   creado_en       TIMESTAMPTZ DEFAULT NOW()
 );
