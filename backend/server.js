@@ -53,6 +53,7 @@ import warehouseLayoutRoutes from "./routes/warehouseLayoutRoutes.js";
 import warehouseRoutes from "./routes/warehouseLayoutRoutes.js";
 import layoutDesignRoutes from "./routes/layoutDesignRoutes.js";
 import abcXyzRoutes from "./routes/abcXyzRoutes.js";
+import inventarioCiclicoRoutes from "./routes/inventarioCiclicoRoutes.js";
 import tmsRoutes from "./routes/tmsRoutes.js";
 import yardRoutes from "./routes/yardRoutes.js";
 
@@ -169,6 +170,7 @@ app.use("/api/wms", warehouseLayoutRoutes);
 app.use("/api/wms", warehouseRoutes);
 app.use("/api/wms", layoutDesignRoutes);
 app.use("/api/analisis", abcXyzRoutes);
+app.use("/api/inventario-ciclico", inventarioCiclicoRoutes);
 app.use("/api/tms", tmsRoutes);
 app.use("/api/yard", yardRoutes);
 app.use("/api/permisos", permisosRoutes);
