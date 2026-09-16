@@ -104,7 +104,21 @@ const procesarArchivoEnSegundoPlano = async (uploadId, empresaId, buffer) => {
       worksheets: "emit",
     });
 
+    let primeraHojaProcesada = false;
+
     for await (const worksheetReader of workbookReader) {
+      if (primeraHojaProcesada) {
+        // Ya se procesó la hoja con datos. Aun así hay que drenar el resto
+        // de hojas: cortar la iteración acá con `break` dejaba al lector en
+        // streaming colgado a veces (nunca llegaba a marcar el upload como
+        // "listo" aunque ya hubiera insertado todas las filas), así que en
+        // vez de eso simplemente se ignoran sus filas sin salir del loop.
+        for await (const _fila of worksheetReader) {
+          // ignorar
+        }
+        continue;
+      }
+
       for await (const row of worksheetReader) {
         if (!headers) {
           // Fila de encabezados: define el mapeo de columna -> nombre.
@@ -148,7 +162,7 @@ const procesarArchivoEnSegundoPlano = async (uploadId, empresaId, buffer) => {
           await actualizarProgreso();
         }
       }
-      break; // solo la primera hoja
+      primeraHojaProcesada = true;
     }
 
     await insertarLote(); // remanente que no llegó a completar un lote
