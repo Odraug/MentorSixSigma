@@ -8,7 +8,8 @@
 // A propósito NO depende de un catálogo de SKU/ubicación: cada carga
 // (`ciclico_uploads`) es un snapshot auto-contenido en `ciclico_stock`.
 import pool from "../db.js";
-import XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { Readable } from "stream";
 
 // Umbral de rotación (ventas / stock_total) para separar X de Y en la
 // clasificación XYZ — mismo criterio que la macro (constante ROT_X).
@@ -18,14 +19,18 @@ const ROT_X = 1.0;
 const CORTE_A = 80;
 const CORTE_B = 95;
 
-const norm = (row) => {
-  const out = {};
-  for (const k in row) {
-    if (Object.prototype.hasOwnProperty.call(row, k) && k != null) {
-      out[String(k).trim().toUpperCase()] = row[k];
-    }
+// ExcelJS entrega cada celda como valor primitivo, Date, o un objeto
+// especial (fórmula, texto enriquecido, hipervínculo) — esto lo reduce
+// siempre a un valor plano simple.
+const cellValue = (v) => {
+  if (v === undefined || v === null) return null;
+  if (typeof v === "object") {
+    if (v instanceof Date) return v;
+    if (Object.prototype.hasOwnProperty.call(v, "result")) return v.result; // fórmula
+    if (Array.isArray(v.richText)) return v.richText.map((t) => t.text).join(""); // texto enriquecido
+    if (Object.prototype.hasOwnProperty.call(v, "text")) return v.text; // hipervínculo { text, hyperlink }
   }
-  return out;
+  return v;
 };
 
 const num = (v, fallback = 0) => {
@@ -51,114 +56,125 @@ const COLS_STOCK = [
 ];
 
 // Archivos reales son de decenas/cientos de miles de filas (SKU x ubicación).
-// Insertar todo antes de responder haría que la request HTTP se cuelgue o se
-// caiga por timeout del proxy. Por eso TODO lo pesado -- parsear el Excel
-// (puede tardar decenas de segundos con archivos de 100k+ filas) e
-// insertarlas -- corre en segundo plano después de responder al cliente,
-// y el frontend consulta el progreso con /estado.
+// Un primer intento con la librería `xlsx` cargaba el archivo COMPLETO en
+// memoria antes de procesar nada, y en el plan gratuito de Render (muy poca
+// RAM) el proceso moría sin dejar ningún error registrado -- la carga
+// quedaba pegada en "procesando" para siempre. Por eso se usa el lector en
+// streaming de `exceljs`: lee fila por fila desde el buffer sin nunca tener
+// el archivo entero en memoria, e inserta en lotes a medida que lee. Todo
+// esto corre después de responder al cliente; el frontend hace polling con
+// /estado para ver el progreso.
 const procesarArchivoEnSegundoPlano = async (uploadId, empresaId, buffer) => {
-  let filas;
-  try {
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    filas = XLSX.utils.sheet_to_json(sheet, { defval: null });
-  } catch (error) {
-    console.error("❌ Error leyendo archivo Inventario Cíclico (upload " + uploadId + "):", error);
-    await pool.query(
-      `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
-      ["No se pudo leer el archivo. ¿Es un Excel válido?", uploadId]
-    );
-    return;
-  }
-
-  if (!filas.length) {
-    await pool.query(
-      `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
-      ["El archivo no tiene filas", uploadId]
-    );
-    return;
-  }
-
-  await pool.query(`UPDATE ciclico_uploads SET filas_totales = $1 WHERE id = $2`, [
-    filas.length,
-    uploadId,
-  ]);
-
   const BATCH = 1000;
   let procesadas = 0;
+  let filasLeidas = 0;
+  let huboFilas = false;
+  let headers = null;
+  let lote = [];
+
+  const insertarLote = async () => {
+    if (lote.length === 0) return;
+    const values = [];
+    const params = [];
+    let p = 1;
+    for (const fila of lote) {
+      values.push(`(${fila.map(() => `$${p++}`).join(",")})`);
+      params.push(...fila);
+    }
+    await pool.query(
+      `INSERT INTO ciclico_stock (${COLS_STOCK.join(",")}) VALUES ${values.join(",")}`,
+      params
+    );
+    lote = [];
+  };
+
+  const actualizarProgreso = () =>
+    pool.query(`UPDATE ciclico_uploads SET filas_totales = $1, filas_procesadas = $2 WHERE id = $3`, [
+      filasLeidas,
+      procesadas,
+      uploadId,
+    ]);
 
   try {
-    for (let i = 0; i < filas.length; i += BATCH) {
-      const lote = filas.slice(i, i + BATCH);
-      const values = [];
-      const params = [];
-      let p = 1;
+    const stream = Readable.from(buffer);
+    const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(stream, {
+      sharedStrings: "cache",
+      styles: "ignore",
+      hyperlinks: "ignore",
+      worksheets: "emit",
+    });
 
-      for (const filaOriginal of lote) {
-        const f = norm(filaOriginal);
+    for await (const worksheetReader of workbookReader) {
+      for await (const row of worksheetReader) {
+        if (!headers) {
+          // Fila de encabezados: define el mapeo de columna -> nombre.
+          headers = row.values.map((v) => {
+            const val = cellValue(v);
+            return val == null ? null : String(val).trim().toUpperCase();
+          });
+          continue;
+        }
+
+        huboFilas = true;
+        filasLeidas++;
+
+        const f = {};
+        for (let c = 1; c < row.values.length; c++) {
+          if (headers[c]) f[headers[c]] = cellValue(row.values[c]);
+        }
+
         const sku = strOrNull(f["SKU"]);
-        if (!sku) continue; // fila sin SKU: no aporta al análisis, se ignora
+        if (sku) {
+          lote.push([
+            uploadId, empresaId, sku,
+            strOrNull(f["DESCRIPCION"]), strOrNull(f["MARCA"]),
+            strOrNull(f["DEPTO"]), strOrNull(f["DESC_DEPTO"]),
+            strOrNull(f["SUBDEPTO"]), strOrNull(f["DESC_SUBDEPTO"]),
+            strOrNull(f["FAMILIA"]), strOrNull(f["DESC_FAMILIA"]),
+            strOrNull(f["CD"]), strOrNull(f["WHSE"]), strOrNull(f["UBICACION"]),
+            strOrNull(f["ZONA"]), strOrNull(f["PASILLO"]), strOrNull(f["BAHIA"]),
+            strOrNull(f["LVL"]), strOrNull(f["PISO"]),
+            num(f["QTY"], 0), num(f["STOCK_TOTAL"], 0), num(f["STOCK_EN_OSR"], 0),
+            numOrNull(f["COSTO"]), numOrNull(f["RETAIL_PRICE"]), num(f["VENTAS"], 0),
+            strOrNull(f["LOGISTICA_OSR"]), strOrNull(f["SUGERENCIA_OSR"]),
+            numOrNull(f["FULL"]), numOrNull(f["HALF"]), numOrNull(f["QUARTER"]),
+            JSON.stringify(f),
+          ]);
+          procesadas++;
+        }
 
-        const fila = [
-          uploadId,
-          empresaId,
-          sku,
-          strOrNull(f["DESCRIPCION"]),
-          strOrNull(f["MARCA"]),
-          strOrNull(f["DEPTO"]),
-          strOrNull(f["DESC_DEPTO"]),
-          strOrNull(f["SUBDEPTO"]),
-          strOrNull(f["DESC_SUBDEPTO"]),
-          strOrNull(f["FAMILIA"]),
-          strOrNull(f["DESC_FAMILIA"]),
-          strOrNull(f["CD"]),
-          strOrNull(f["WHSE"]),
-          strOrNull(f["UBICACION"]),
-          strOrNull(f["ZONA"]),
-          strOrNull(f["PASILLO"]),
-          strOrNull(f["BAHIA"]),
-          strOrNull(f["LVL"]),
-          strOrNull(f["PISO"]),
-          num(f["QTY"], 0),
-          num(f["STOCK_TOTAL"], 0),
-          num(f["STOCK_EN_OSR"], 0),
-          numOrNull(f["COSTO"]),
-          numOrNull(f["RETAIL_PRICE"]),
-          num(f["VENTAS"], 0),
-          strOrNull(f["LOGISTICA_OSR"]),
-          strOrNull(f["SUGERENCIA_OSR"]),
-          numOrNull(f["FULL"]),
-          numOrNull(f["HALF"]),
-          numOrNull(f["QUARTER"]),
-          JSON.stringify(filaOriginal),
-        ];
-
-        values.push(`(${fila.map(() => `$${p++}`).join(",")})`);
-        params.push(...fila);
-        procesadas++;
+        if (lote.length >= BATCH) {
+          await insertarLote();
+          await actualizarProgreso();
+        }
       }
-
-      if (values.length > 0) {
-        await pool.query(
-          `INSERT INTO ciclico_stock (${COLS_STOCK.join(",")}) VALUES ${values.join(",")}`,
-          params
-        );
-      }
-
-      // Progreso visible para el polling del frontend, lote a lote.
-      await pool.query(`UPDATE ciclico_uploads SET filas_procesadas = $1 WHERE id = $2`, [
-        procesadas,
-        uploadId,
-      ]);
+      break; // solo la primera hoja
     }
 
-    await pool.query(`UPDATE ciclico_uploads SET estado = 'listo' WHERE id = $1`, [uploadId]);
-  } catch (error) {
-    console.error("❌ Error procesando filas Inventario Cíclico (upload " + uploadId + "):", error);
+    await insertarLote(); // remanente que no llegó a completar un lote
+
+    if (!huboFilas) {
+      await pool.query(
+        `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
+        ["El archivo no tiene filas (o no se encontró la hoja con datos)", uploadId]
+      );
+      return;
+    }
+
     await pool.query(
-      `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
-      [String(error.message || error).slice(0, 500), uploadId]
+      `UPDATE ciclico_uploads SET filas_totales = $1, filas_procesadas = $2, estado = 'listo' WHERE id = $3`,
+      [filasLeidas, procesadas, uploadId]
     );
+  } catch (error) {
+    console.error("❌ Error procesando archivo Inventario Cíclico (upload " + uploadId + "):", error);
+    try {
+      await pool.query(
+        `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2`,
+        [String(error.message || error).slice(0, 500), uploadId]
+      );
+    } catch (errorSecundario) {
+      console.error("❌ Además falló al registrar el error en la base:", errorSecundario);
+    }
   }
 };
 
@@ -214,7 +230,7 @@ export const obtenerEstadoCiclico = async (req, res) => {
     const { uploadId } = req.params;
 
     const { rows } = await pool.query(
-      `SELECT id, filas_totales, filas_procesadas, estado, error_mensaje
+      `SELECT id, filas_totales, filas_procesadas, estado, error_mensaje, creado_en
        FROM ciclico_uploads WHERE id = $1 AND empresa_id = $2`,
       [uploadId, empresaId]
     );
@@ -223,7 +239,23 @@ export const obtenerEstadoCiclico = async (req, res) => {
       return res.status(404).json({ ok: false, message: "Carga no encontrada" });
     }
 
-    res.json({ ok: true, ...rows[0] });
+    let carga = rows[0];
+
+    // Red de seguridad: si el proceso en segundo plano murió (reinicio del
+    // servidor, sin memoria, etc.) sin llegar a marcar error, la carga queda
+    // en "procesando" para siempre. Si pasaron más de 10 minutos sin
+    // novedades, se da por perdida en vez de dejar al usuario esperando.
+    const minutosDesdeCreacion = (Date.now() - new Date(carga.creado_en).getTime()) / 60000;
+    if (carga.estado === "procesando" && minutosDesdeCreacion > 10) {
+      const mensaje = "El procesamiento se interrumpió (probablemente el servidor se reinició por falta de memoria). Probá subir el archivo de nuevo.";
+      await pool.query(
+        `UPDATE ciclico_uploads SET estado = 'error', error_mensaje = $1 WHERE id = $2 AND estado = 'procesando'`,
+        [mensaje, uploadId]
+      );
+      carga = { ...carga, estado: "error", error_mensaje: mensaje };
+    }
+
+    res.json({ ok: true, ...carga });
   } catch (error) {
     console.error("❌ Error consultando estado Inventario Cíclico:", error);
     res.status(500).json({ ok: false, message: "Error consultando el estado" });
