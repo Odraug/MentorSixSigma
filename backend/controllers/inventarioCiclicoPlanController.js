@@ -139,14 +139,16 @@ export const guardarCapacidadCd = async (req, res) => {
 
 /**
  * POST /api/inventario-ciclico/:uploadId/plan
- * Body: { horizonte_dias = 60, fecha_inicio, capacidad? = [{cd, capacidad_por_turno}] }
+ * Body: { horizonte_dias = 45 (máx. 45), fecha_inicio, capacidad? = [{cd, capacidad_por_turno}] }
  */
 export const generarPlanCiclico = async (req, res) => {
   try {
     const empresaId = req.user?.empresa_id;
     const usuarioId = req.user?.id;
     const { uploadId } = req.params;
-    const horizonteDias = Number(req.body?.horizonte_dias) || 60;
+    // Tope de 45 días acordado con el usuario: un ciclo mas largo pierde el
+    // sentido de "cíclico" para la operación real.
+    const horizonteDias = Math.min(45, Number(req.body?.horizonte_dias) || 45);
     const fechaInicio = req.body?.fecha_inicio || new Date().toISOString().slice(0, 10);
 
     const uploadRes = await pool.query(
