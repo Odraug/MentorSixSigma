@@ -11,6 +11,13 @@ import {
   obtenerDispersionCiclico,
   obtenerConsolidacionCiclico,
 } from "../controllers/inventarioCiclicoController.js";
+import {
+  obtenerCapacidadCd,
+  guardarCapacidadCd,
+  generarPlanCiclico,
+  listarPlanesCiclico,
+  obtenerPlanCiclico,
+} from "../controllers/inventarioCiclicoPlanController.js";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
@@ -22,5 +29,12 @@ router.get("/:uploadId/resumen", verifyToken, obtenerResumenCiclico);
 router.get("/:uploadId/abc-xyz", verifyToken, obtenerAbcXyzCiclico);
 router.get("/:uploadId/dispersion", verifyToken, obtenerDispersionCiclico);
 router.get("/:uploadId/consolidacion", verifyToken, obtenerConsolidacionCiclico);
+
+// Plan de inventario cíclico (priorización + calendario por turnos)
+router.put("/capacidad", verifyToken, guardarCapacidadCd);
+router.get("/:uploadId/capacidad", verifyToken, obtenerCapacidadCd);
+router.post("/:uploadId/plan", verifyToken, generarPlanCiclico);
+router.get("/:uploadId/planes", verifyToken, listarPlanesCiclico);
+router.get("/plan/:planId", verifyToken, obtenerPlanCiclico);
 
 export default router;

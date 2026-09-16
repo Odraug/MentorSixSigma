@@ -115,6 +115,12 @@ export default function ICDashboard() {
             Otra carga
           </button>
           <button
+            onClick={() => navigate(`/inventario-ciclico/${uploadId}/plan`)}
+            className="bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-lg"
+          >
+            📅 Planificar inventario cíclico
+          </button>
+          <button
             onClick={() => navigate("/inicio")}
             className="bg-gray-700 hover:bg-gray-800 px-3 py-2 rounded-lg"
           >
