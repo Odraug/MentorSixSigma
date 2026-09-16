@@ -389,10 +389,24 @@ export const obtenerPlanCiclico = async (req, res) => {
       return res.status(404).json({ ok: false, message: "Plan no encontrado" });
     }
 
+    // Una tarea es "contar el SKU X en el CD Y", pero para ejecutar el
+    // conteo en piso hace falta saber EN QUÉ ubicaciones físicas está ese
+    // SKU -- se expande cada tarea a una fila por ubicación (join contra el
+    // snapshot de stock de la misma carga), agregando también el piso para
+    // poder filtrar por piso en el frontend. `tarea_id` permite volver a
+    // agrupar por tarea real (para el resumen semanal, que cuenta SKU, no
+    // ubicaciones).
     const tareasRes = await pool.query(
-      `SELECT sku, descripcion, cd, prioridad, frecuencia, score_total, fecha, dia_semana, turno, estado
-       FROM ciclico_plan_tareas WHERE plan_id = $1
-       ORDER BY cd, fecha, turno, sku`,
+      `SELECT
+         pt.id AS tarea_id, pt.sku, pt.descripcion, pt.cd, pt.prioridad, pt.frecuencia,
+         pt.score_total, pt.fecha, pt.dia_semana, pt.turno, pt.estado,
+         cs.ubicacion, cs.piso, cs.qty
+       FROM ciclico_plan_tareas pt
+       JOIN ciclico_planes p ON p.id = pt.plan_id
+       LEFT JOIN ciclico_stock cs
+         ON cs.upload_id = p.upload_id AND cs.sku = pt.sku AND cs.cd = pt.cd
+       WHERE pt.plan_id = $1
+       ORDER BY pt.cd, pt.fecha, pt.turno, pt.sku, cs.ubicacion`,
       [planId]
     );
 

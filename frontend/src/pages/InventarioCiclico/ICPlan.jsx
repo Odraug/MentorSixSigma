@@ -1,6 +1,7 @@
 // src/pages/InventarioCiclico/ICPlan.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import * as XLSX from "xlsx";
 import { apiGet, apiPost, apiPut } from "../../utils/api";
 
 const PRIORIDAD_COLOR = {
@@ -26,6 +27,7 @@ export default function ICPlan() {
   const [planActual, setPlanActual] = useState(null); // { plan, tareas } o resumen recién generado
   const [filtroCd, setFiltroCd] = useState("");
   const [filtroPrioridad, setFiltroPrioridad] = useState("");
+  const [filtroPiso, setFiltroPiso] = useState("");
 
   const cargarCapacidad = async () => {
     const resp = await apiGet(`/inventario-ciclico/${uploadId}/capacidad`);
@@ -96,18 +98,30 @@ export default function ICPlan() {
   }
 
   const cdsDisponibles = capacidad.map((c) => c.cd);
+  // Ahora cada "tarea" viene expandida a una fila por ubicación física del
+  // SKU (para poder mostrar dónde contar y filtrar por piso). `tarea_id`
+  // identifica la tarea real (SKU+CD+fecha+turno) detrás de esas filas.
+  const pisosDisponibles = [...new Set((planActual?.tareas || []).map((t) => t.piso).filter(Boolean))].sort();
   const tareasFiltradas = (planActual?.tareas || []).filter(
-    (t) => (!filtroCd || t.cd === filtroCd) && (!filtroPrioridad || t.prioridad === filtroPrioridad)
+    (t) =>
+      (!filtroCd || t.cd === filtroCd) &&
+      (!filtroPrioridad || t.prioridad === filtroPrioridad) &&
+      (!filtroPiso || t.piso === filtroPiso)
   );
 
   // Agrupa TODAS las tareas del plan (no solo las filtradas/mostradas) en
   // bloques de 7 días desde la fecha de inicio, contando por prioridad.
+  // Dedupe por tarea_id: una tarea puede tener varias ubicaciones, pero acá
+  // se cuenta una sola vez (es "1 SKU a contar", no "1 ubicación a visitar").
   const resumenSemanal = (() => {
     const tareas = planActual?.tareas || [];
     if (!tareas.length || !planActual?.plan?.fecha_inicio) return [];
     const inicio = new Date(String(planActual.plan.fecha_inicio).slice(0, 10) + "T00:00:00");
+    const vistas = new Set();
     const buckets = {};
     for (const t of tareas) {
+      if (vistas.has(t.tarea_id)) continue;
+      vistas.add(t.tarea_id);
       const fecha = new Date(String(t.fecha).slice(0, 10) + "T00:00:00");
       const semana = Math.floor((fecha - inicio) / (7 * 86400000));
       if (!buckets[semana]) buckets[semana] = { semana, P1: 0, P2: 0, P3: 0, P4: 0, total: 0 };
@@ -123,24 +137,32 @@ export default function ICPlan() {
       });
   })();
 
-  const descargarCsv = () => {
+  const descargarExcel = () => {
     const tareas = planActual?.tareas || [];
     if (!tareas.length) return;
-    const encabezado = ["Fecha", "Dia", "Turno", "CD", "SKU", "Descripcion", "Prioridad", "Frecuencia", "Operario"];
-    const escapar = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const filas = tareas.map((t) =>
-      [t.fecha?.slice(0, 10), t.dia_semana, t.turno, t.cd, t.sku, t.descripcion, t.prioridad, t.frecuencia, ""]
-        .map(escapar)
-        .join(",")
-    );
-    const csv = [encabezado.map(escapar).join(","), ...filas].join("\n");
-    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `plan-inventario-ciclico-${planActual.plan.fecha_inicio?.slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    const filas = tareas.map((t) => ({
+      Fecha: t.fecha?.slice(0, 10),
+      Día: t.dia_semana,
+      Turno: t.turno,
+      CD: t.cd,
+      Piso: t.piso || "",
+      Ubicación: t.ubicacion || "",
+      SKU: t.sku,
+      Descripción: t.descripcion,
+      Prioridad: t.prioridad,
+      Frecuencia: t.frecuencia,
+      Operario: "",
+    }));
+
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja["!cols"] = [
+      { wch: 11 }, { wch: 10 }, { wch: 6 }, { wch: 8 }, { wch: 8 }, { wch: 14 },
+      { wch: 14 }, { wch: 32 }, { wch: 9 }, { wch: 11 }, { wch: 16 },
+    ];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Plan");
+    XLSX.writeFile(libro, `plan-inventario-ciclico-${planActual.plan.fecha_inicio?.slice(0, 10)}.xlsx`);
   };
 
   return (
@@ -353,15 +375,21 @@ export default function ICPlan() {
               <h2 className="text-lg font-semibold text-indigo-300">Calendario</h2>
               <div className="flex gap-2 flex-wrap">
                 <button
-                  onClick={descargarCsv}
+                  onClick={descargarExcel}
                   className="bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded text-sm"
                 >
-                  ⬇️ Descargar CSV
+                  ⬇️ Descargar Excel
                 </button>
                 <select value={filtroCd} onChange={(e) => setFiltroCd(e.target.value)} className="bg-gray-700 p-2 rounded text-sm">
                   <option value="">Todos los CD</option>
                   {cdsDisponibles.map((cd) => (
                     <option key={cd} value={cd}>{cd}</option>
+                  ))}
+                </select>
+                <select value={filtroPiso} onChange={(e) => setFiltroPiso(e.target.value)} className="bg-gray-700 p-2 rounded text-sm">
+                  <option value="">Todos los pisos</option>
+                  {pisosDisponibles.map((piso) => (
+                    <option key={piso} value={piso}>{piso}</option>
                   ))}
                 </select>
                 <select value={filtroPrioridad} onChange={(e) => setFiltroPrioridad(e.target.value)} className="bg-gray-700 p-2 rounded text-sm">
@@ -373,6 +401,9 @@ export default function ICPlan() {
                 </select>
               </div>
             </div>
+            <p className="text-xs text-gray-500 mb-2">
+              Cada fila es una ubicación física a visitar — un SKU con varias ubicaciones en el CD aparece varias veces.
+            </p>
 
             <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="w-full text-sm">
@@ -382,6 +413,8 @@ export default function ICPlan() {
                     <th className="p-2">Día</th>
                     <th className="p-2">Turno</th>
                     <th className="p-2">CD</th>
+                    <th className="p-2">Piso</th>
+                    <th className="p-2">Ubicación</th>
                     <th className="p-2">SKU</th>
                     <th className="p-2">Descripción</th>
                     <th className="p-2">Prioridad</th>
@@ -395,6 +428,8 @@ export default function ICPlan() {
                       <td className="p-2">{t.dia_semana}</td>
                       <td className="p-2">{t.turno}</td>
                       <td className="p-2">{t.cd}</td>
+                      <td className="p-2">{t.piso || "—"}</td>
+                      <td className="p-2 text-gray-300">{t.ubicacion || "—"}</td>
                       <td className="p-2">{t.sku}</td>
                       <td className="p-2 text-gray-300">{t.descripcion}</td>
                       <td className="p-2">
@@ -407,7 +442,7 @@ export default function ICPlan() {
               </table>
             </div>
             {tareasFiltradas.length > 500 && (
-              <p className="text-xs text-gray-500 mt-2">Mostrando las primeras 500 de {tareasFiltradas.length} tareas. Usá los filtros para acotar.</p>
+              <p className="text-xs text-gray-500 mt-2">Mostrando las primeras 500 de {tareasFiltradas.length} filas (ubicaciones). Usá los filtros para acotar, o descargá el Excel completo.</p>
             )}
           </div>
         </>
