@@ -110,9 +110,10 @@ export default function ICPlan() {
   );
 
   // Agrupa TODAS las tareas del plan (no solo las filtradas/mostradas) en
-  // bloques de 7 días desde la fecha de inicio, contando por prioridad.
-  // Dedupe por tarea_id: una tarea puede tener varias ubicaciones, pero acá
-  // se cuenta una sola vez (es "1 SKU a contar", no "1 ubicación a visitar").
+  // bloques de 7 días desde la fecha de inicio, con apertura por CD y
+  // contando por prioridad. Dedupe por tarea_id: una tarea puede tener
+  // varias ubicaciones, pero acá se cuenta una sola vez (es "1 SKU a
+  // contar", no "1 ubicación a visitar").
   const resumenSemanal = (() => {
     const tareas = planActual?.tareas || [];
     if (!tareas.length || !planActual?.plan?.fecha_inicio) return [];
@@ -124,17 +125,36 @@ export default function ICPlan() {
       vistas.add(t.tarea_id);
       const fecha = new Date(String(t.fecha).slice(0, 10) + "T00:00:00");
       const semana = Math.floor((fecha - inicio) / (7 * 86400000));
-      if (!buckets[semana]) buckets[semana] = { semana, P1: 0, P2: 0, P3: 0, P4: 0, total: 0 };
-      buckets[semana][t.prioridad] = (buckets[semana][t.prioridad] || 0) + 1;
-      buckets[semana].total += 1;
+      const key = `${semana}|${t.cd}`;
+      if (!buckets[key]) buckets[key] = { semana, cd: t.cd, P1: 0, P2: 0, P3: 0, P4: 0, total: 0 };
+      buckets[key][t.prioridad] = (buckets[key][t.prioridad] || 0) + 1;
+      buckets[key].total += 1;
     }
     return Object.values(buckets)
-      .sort((a, b) => a.semana - b.semana)
+      .sort((a, b) => a.semana - b.semana || a.cd.localeCompare(b.cd))
       .map((b) => {
         const desde = new Date(inicio.getTime() + b.semana * 7 * 86400000);
         const hasta = new Date(desde.getTime() + 6 * 86400000);
         return { ...b, desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) };
       });
+  })();
+
+  // Agrupa las filas (semana, cd) en bloques por semana, con un total de la
+  // semana sumando todos los CD, para renderizar sub-filas + subtotal.
+  const semanasAgrupadas = (() => {
+    const porSemana = {};
+    for (const r of resumenSemanal) {
+      if (!porSemana[r.semana]) {
+        porSemana[r.semana] = { semana: r.semana, desde: r.desde, hasta: r.hasta, filas: [], total: { P1: 0, P2: 0, P3: 0, P4: 0, total: 0 } };
+      }
+      porSemana[r.semana].filas.push(r);
+      porSemana[r.semana].total.P1 += r.P1 || 0;
+      porSemana[r.semana].total.P2 += r.P2 || 0;
+      porSemana[r.semana].total.P3 += r.P3 || 0;
+      porSemana[r.semana].total.P4 += r.P4 || 0;
+      porSemana[r.semana].total.total += r.total || 0;
+    }
+    return Object.values(porSemana).sort((a, b) => a.semana - b.semana);
   })();
 
   const descargarExcel = () => {
@@ -340,12 +360,13 @@ export default function ICPlan() {
           {resumenSemanal.length > 0 && (
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6">
               <h2 className="text-lg font-semibold text-indigo-300 mb-1">Resumen semanal por prioridad</h2>
-              <p className="text-xs text-gray-500 mb-3">Cuántos SKU se cuentan cada semana, según su prioridad (todos los CD juntos).</p>
+              <p className="text-xs text-gray-500 mb-3">Cuántos SKU se cuentan cada semana, con apertura por CD y por prioridad.</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-gray-400 border-b border-gray-700">
                       <th className="p-2">Semana</th>
+                      <th className="p-2">CD</th>
                       <th className="p-2 text-red-400">P1</th>
                       <th className="p-2 text-amber-400">P2</th>
                       <th className="p-2 text-blue-400">P3</th>
@@ -354,15 +375,30 @@ export default function ICPlan() {
                     </tr>
                   </thead>
                   <tbody>
-                    {resumenSemanal.map((s) => (
-                      <tr key={s.semana} className="border-b border-gray-800">
-                        <td className="p-2">Sem. {s.semana + 1} ({s.desde} a {s.hasta})</td>
-                        <td className="p-2">{s.P1 || 0}</td>
-                        <td className="p-2">{s.P2 || 0}</td>
-                        <td className="p-2">{s.P3 || 0}</td>
-                        <td className="p-2">{s.P4 || 0}</td>
-                        <td className="p-2 font-semibold">{s.total}</td>
-                      </tr>
+                    {semanasAgrupadas.map((sem) => (
+                      <React.Fragment key={sem.semana}>
+                        {sem.filas.map((r) => (
+                          <tr key={`${sem.semana}-${r.cd}`} className="border-b border-gray-800">
+                            <td className="p-2 text-gray-400">Sem. {sem.semana + 1} ({sem.desde} a {sem.hasta})</td>
+                            <td className="p-2">{r.cd}</td>
+                            <td className="p-2">{r.P1 || 0}</td>
+                            <td className="p-2">{r.P2 || 0}</td>
+                            <td className="p-2">{r.P3 || 0}</td>
+                            <td className="p-2">{r.P4 || 0}</td>
+                            <td className="p-2">{r.total}</td>
+                          </tr>
+                        ))}
+                        {sem.filas.length > 1 && (
+                          <tr className="border-b-2 border-gray-700 bg-gray-900/40 font-semibold">
+                            <td className="p-2" colSpan={2}>Total semana {sem.semana + 1}</td>
+                            <td className="p-2">{sem.total.P1}</td>
+                            <td className="p-2">{sem.total.P2}</td>
+                            <td className="p-2">{sem.total.P3}</td>
+                            <td className="p-2">{sem.total.P4}</td>
+                            <td className="p-2">{sem.total.total}</td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
