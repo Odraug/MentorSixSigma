@@ -142,6 +142,8 @@ import AbcXyzAnalysis from "./pages/ABCXYZ/AbcXyzAnalysis.jsx";
 import ICUpload from "./pages/InventarioCiclico/ICUpload.jsx";
 import ICDashboard from "./pages/InventarioCiclico/ICDashboard.jsx";
 import ICPlan from "./pages/InventarioCiclico/ICPlan.jsx";
+import ManualIndex from "./pages/Manual/ManualIndex.jsx";
+import ManualArticulo from "./pages/Manual/ManualArticulo.jsx";
 import TmsDashboard from "./modules/core/tms/TmsDashboard.jsx";
 import CarriersFleetManager from "./modules/core/tms/CarriersFleetManager.jsx";
 import YardBoard from "./modules/core/yard/YardBoard.jsx";
@@ -279,6 +281,8 @@ export default function App() {
         <Route path="/inventario-ciclico" element={<ICUpload />} />
         <Route path="/inventario-ciclico/:uploadId" element={<ICDashboard />} />
         <Route path="/inventario-ciclico/:uploadId/plan" element={<ICPlan />} />
+        <Route path="/manual" element={<ManualIndex />} />
+        <Route path="/manual/:slug" element={<ManualArticulo />} />
         <Route path="/core/tms" element={<TmsDashboard />} />
         <Route path="/core/tms/flota" element={<CarriersFleetManager />} />
         <Route path="/core/yard" element={<YardBoard />} />
