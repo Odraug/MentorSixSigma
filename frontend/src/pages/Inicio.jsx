@@ -20,6 +20,9 @@ import iconAdminEmpresas from "../img/modulos/icon-admin-empresas.png";
 import iconAdminModulos from "../img/modulos/icon-admin-modulos.png";
 import iconAdminConsultas from "../img/modulos/icon-admin-consultas.png";
 import iconDiagnostico from "../img/modulos/icon-diagnostico.png";
+import iconManual from "../img/modulos/icon-manual.png";
+import iconAbcXyz from "../img/modulos/icon-abc-xyz.png";
+import iconInventarioCiclico from "../img/modulos/icon-inventario-ciclico.png";
 
 // Iconos propios de MentorSuites por nombre de módulo; el resto usa un ícono genérico.
 const ICONOS_POR_MODULO = {
@@ -46,6 +49,11 @@ const ICONOS_POR_MODULO = {
   "consultas": iconAdminConsultas,
   "diagnóstico rápido": iconDiagnostico,
   "diagnostico rapido": iconDiagnostico,
+  "manual de uso": iconManual,
+  "analisis abc/xyz": iconAbcXyz,
+  "análisis abc/xyz": iconAbcXyz,
+  "inventario cíclico": iconInventarioCiclico,
+  "inventario ciclico": iconInventarioCiclico,
 };
 
 const quitarAcentos = (s = "") =>
