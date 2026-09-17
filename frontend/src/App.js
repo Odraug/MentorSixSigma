@@ -6,6 +6,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import ProtectedLayout from "./layouts/ProtectedLayout.jsx";
+import UpdateBanner from "./components/UpdateBanner.jsx";
 
 // ============================================
 // 🌍 PÁGINAS PÚBLICAS
@@ -155,6 +156,8 @@ import PermisosMatrix from "./modules/admin/PermisosMatrix.jsx";
 // ============================================
 export default function App() {
   return (
+    <>
+    <UpdateBanner />
     <Routes>
 
       {/* ======================================
@@ -297,5 +300,6 @@ export default function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
 
     </Routes>
+    </>
   );
 }
