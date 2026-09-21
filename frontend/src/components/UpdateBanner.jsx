@@ -53,7 +53,6 @@ export default function UpdateBanner() {
       clearInterval(intervalo);
       document.removeEventListener("visibilitychange", alVolverVisible);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!hayVersionNueva) return null;
