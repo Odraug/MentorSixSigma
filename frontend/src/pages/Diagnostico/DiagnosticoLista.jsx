@@ -48,6 +48,12 @@ export default function DiagnosticoLista() {
             >
               ➕ Nuevo diagnóstico
             </button>
+            <button
+              onClick={() => navigate("/inicio")}
+              className="bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
+            >
+              Volver al menú principal
+            </button>
           </div>
         </div>
 
