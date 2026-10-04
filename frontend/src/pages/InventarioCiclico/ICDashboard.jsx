@@ -272,35 +272,40 @@ export default function ICDashboard() {
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
             <h2 className="text-lg font-semibold text-indigo-300 mb-1">Resumen por categoría y CD</h2>
             <p className="text-xs text-gray-500 mb-3">
-              Cada celda: cantidad de SKU y stock total (unidades) de esa categoría en ese CD. Hacé
-              clic en una celda, en un encabezado de categoría o en un CD para ver el detalle.
+              Cada celda: SKU · unidades vendidas · stock actual. Hacé clic en una celda, en un
+              encabezado de categoría o en un CD para ver el detalle.
             </p>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse border border-slate-700">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="bg-slate-900 text-slate-200">
-                    <th className="p-2 text-left sticky left-0 bg-slate-900 border border-slate-700">CD</th>
+                  <tr className="text-left text-gray-400 border-b border-gray-700">
+                    <th className="p-2 sticky left-0 bg-gray-800">CD</th>
                     {CATEGORIAS_ORDEN.map((matriz) => (
                       <th
                         key={matriz}
-                        className="p-2 text-center cursor-pointer hover:text-white border border-slate-700"
+                        className="p-2 text-center cursor-pointer hover:text-white"
                         title={CELL_LABEL[matriz]}
                         onClick={() => setCategoriaSeleccionada({ matriz, cd: null })}
                       >
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-sm mr-1 align-middle"
+                          style={{ background: colorCelda(matriz[0], matriz[1]) }}
+                        />
                         {matriz}
                       </th>
                     ))}
-                    <th className="p-2 text-center border border-slate-700">Total CD</th>
+                    <th className="p-2 text-center">Total CD</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cds.map((cd) => {
                     let totalSkuCd = 0;
                     let totalUnidCd = 0;
+                    let totalStockCd = 0;
                     return (
-                      <tr key={cd}>
+                      <tr key={cd} className="border-b border-gray-800">
                         <td
-                          className="p-2 font-medium sticky left-0 bg-gray-800 border border-slate-700 cursor-pointer hover:text-white"
+                          className="p-2 font-medium sticky left-0 bg-gray-800 cursor-pointer hover:text-white"
                           onClick={() => setCategoriaSeleccionada({ matriz: null, cd })}
                         >
                           {cd}
@@ -308,24 +313,27 @@ export default function ICDashboard() {
                         {CATEGORIAS_ORDEN.map((matriz) => {
                           const c = celda[`${cd}|${matriz}`];
                           const skus = c?.skus || 0;
-                          const unidades = c?.stock || 0;
+                          const unidades = c?.unidades || 0;
+                          const stock = c?.stock || 0;
                           totalSkuCd += skus;
                           totalUnidCd += unidades;
+                          totalStockCd += stock;
                           const seleccionada =
                             categoriaSeleccionada?.matriz === matriz && categoriaSeleccionada?.cd === cd;
                           return (
                             <td
                               key={matriz}
-                              className={`p-2 text-center border border-slate-700 ${
-                                skus > 0 ? "cursor-pointer hover:brightness-110" : ""
-                              } ${seleccionada ? "ring-2 ring-inset ring-white" : ""}`}
+                              className={`p-2 text-center ${skus > 0 ? "cursor-pointer hover:brightness-110" : ""} ${
+                                seleccionada ? "ring-2 ring-inset ring-white" : ""
+                              }`}
                               style={skus > 0 ? { background: colorCelda(matriz[0], matriz[1]), opacity: 0.85 } : {}}
                               onClick={() => skus > 0 && setCategoriaSeleccionada({ matriz, cd })}
                             >
                               {skus > 0 ? (
                                 <>
-                                  <div className="font-semibold">{skus.toLocaleString("es-CL")} SKU</div>
-                                  <div className="text-[10px] opacity-90">{unidades.toLocaleString("es-CL")} u.</div>
+                                  <div className="font-semibold">{skus.toLocaleString("es-CL")}</div>
+                                  <div className="text-[10px] opacity-90">{unidades.toLocaleString("es-CL")} vta.</div>
+                                  <div className="text-[10px] opacity-75">{stock.toLocaleString("es-CL")} stock</div>
                                 </>
                               ) : (
                                 <span className="text-gray-600">—</span>
@@ -333,33 +341,36 @@ export default function ICDashboard() {
                             </td>
                           );
                         })}
-                        <td className="p-2 text-center font-semibold bg-gray-900/40 border border-slate-700">
-                          <div>{totalSkuCd.toLocaleString("es-CL")} SKU</div>
-                          <div className="text-[10px] text-gray-400">{totalUnidCd.toLocaleString("es-CL")} u.</div>
+                        <td className="p-2 text-center font-semibold bg-gray-900/40">
+                          <div>{totalSkuCd.toLocaleString("es-CL")}</div>
+                          <div className="text-[10px] text-gray-400">{totalUnidCd.toLocaleString("es-CL")} vta.</div>
+                          <div className="text-[10px] text-gray-400">{totalStockCd.toLocaleString("es-CL")} stock</div>
                         </td>
                       </tr>
                     );
                   })}
                   <tr className="bg-gray-900/40">
-                    <td className="p-2 font-semibold sticky left-0 bg-gray-900/40 border border-slate-700">
-                      Total general
-                    </td>
+                    <td className="p-2 font-semibold sticky left-0 bg-gray-900/40">Total general</td>
                     {CATEGORIAS_ORDEN.map((matriz) => {
                       const totalSkus = abcXyz.resumen_matriz[matriz] || 0;
-                      const totalUnid = filas
-                        .filter((r) => r.matriz === matriz)
-                        .reduce((acc, r) => acc + r.stock, 0);
+                      const filasCategoria = filas.filter((r) => r.matriz === matriz);
+                      const totalUnid = filasCategoria.reduce((acc, r) => acc + r.unidades, 0);
+                      const totalStock = filasCategoria.reduce((acc, r) => acc + r.stock, 0);
                       return (
-                        <td key={matriz} className="p-2 text-center font-semibold border border-slate-700">
-                          <div>{totalSkus.toLocaleString("es-CL")} SKU</div>
-                          <div className="text-[10px] text-gray-400">{totalUnid.toLocaleString("es-CL")} u.</div>
+                        <td key={matriz} className="p-2 text-center font-semibold">
+                          <div>{totalSkus.toLocaleString("es-CL")}</div>
+                          <div className="text-[10px] text-gray-400">{totalUnid.toLocaleString("es-CL")} vta.</div>
+                          <div className="text-[10px] text-gray-400">{totalStock.toLocaleString("es-CL")} stock</div>
                         </td>
                       );
                     })}
-                    <td className="p-2 text-center font-bold border border-slate-700">
-                      <div>{abcXyz.total_skus.toLocaleString("es-CL")} SKU</div>
+                    <td className="p-2 text-center font-bold">
+                      <div>{abcXyz.total_skus.toLocaleString("es-CL")}</div>
                       <div className="text-[10px] text-gray-400 font-normal">
-                        {filas.reduce((acc, r) => acc + r.stock, 0).toLocaleString("es-CL")} u.
+                        {filas.reduce((acc, r) => acc + r.unidades, 0).toLocaleString("es-CL")} vta.
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-normal">
+                        {filas.reduce((acc, r) => acc + r.stock, 0).toLocaleString("es-CL")} stock
                       </div>
                     </td>
                   </tr>
