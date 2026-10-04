@@ -631,3 +631,155 @@ export const obtenerConsolidacionCiclico = async (req, res) => {
     res.status(500).json({ ok: false, message: "Error calculando la consolidación" });
   }
 };
+
+// Solo AX/AY/BX se consideran candidatas a vivir en el OSR (alta/media
+// rotación). A cada una se le asigna un tipo de tote: a mayor rotación,
+// tote más grande, para maximizar SKU y unidades por slot de la máquina.
+const TOTE_POR_MATRIZ = { AX: "FULL", AY: "HALF", BX: "QUARTER" };
+const CAMPO_CAPACIDAD = { FULL: "full_qty", HALF: "half_qty", QUARTER: "quarter_qty" };
+const TARGET_OCUPACION = 0.85;
+const TOP_SUGERENCIAS = 300;
+
+/**
+ * GET /api/inventario-ciclico/:uploadId/osr-reabastecimiento
+ * Tres sugerencias sobre el uso del OSR, usando las columnas del archivo
+ * (stock_en_osr, logistica_osr, full/half/quarter_qty) + la clasificación
+ * ABC/XYZ ya calculada en /abc-xyz:
+ *  - reabastecer: SKU AX/AY/BX ya en el OSR por debajo del 85% del tote
+ *    asignado según su categoría.
+ *  - incorporar: SKU AX/AY/BX aptos (logistica_osr != 'N') que todavía no
+ *    están en el OSR.
+ *  - recall: SKU que están en el OSR pero NO son AX/AY/BX (baja rotación),
+ *    candidatos a sacar para liberar capacidad.
+ */
+export const obtenerOsrReabastecimientoCiclico = async (req, res) => {
+  try {
+    const empresaId = req.user?.empresa_id;
+    const { uploadId } = req.params;
+
+    if (!(await verificarUpload(uploadId, empresaId))) {
+      return res.status(404).json({ ok: false, message: "Carga no encontrada" });
+    }
+
+    const { rows } = await pool.query(
+      `WITH por_sku AS (
+         SELECT
+           sku,
+           MAX(descripcion) AS descripcion,
+           SUM(ventas) AS ventas_total,
+           SUM(stock_total) AS stock_total,
+           MAX(stock_en_osr) AS stock_en_osr,
+           MAX(logistica_osr) AS logistica_osr,
+           MAX(sugerencia_osr) AS sugerencia_osr,
+           MAX(full_qty) AS full_qty,
+           MAX(half_qty) AS half_qty,
+           MAX(quarter_qty) AS quarter_qty
+         FROM ciclico_stock
+         WHERE upload_id = $1
+         GROUP BY sku
+       ),
+       rankeado AS (
+         SELECT *,
+           SUM(ventas_total) OVER (ORDER BY ventas_total DESC, sku) AS acumulado,
+           SUM(ventas_total) OVER () AS total_general
+         FROM por_sku
+       )
+       SELECT *,
+         CASE WHEN total_general > 0
+           THEN ROUND(100.0 * acumulado / total_general, 2)
+           ELSE 0 END AS pct_acumulado
+       FROM rankeado
+       ORDER BY ventas_total DESC, sku`,
+      [uploadId]
+    );
+
+    const reabastecer = [];
+    const incorporar = [];
+    const recall = [];
+
+    for (const r of rows) {
+      const pct = Number(r.pct_acumulado);
+      const abc = pct <= CORTE_A ? "A" : pct <= CORTE_B ? "B" : "C";
+      const ventas = Number(r.ventas_total);
+      const stockTotal = Number(r.stock_total);
+      const rotacion = stockTotal > 0 ? ventas / stockTotal : 0;
+      const xyz = ventas <= 0 ? "Z" : rotacion >= ROT_X ? "X" : "Y";
+      const matriz = `${abc}${xyz}`;
+
+      const stockOsr = Number(r.stock_en_osr) || 0;
+      const logisticaOsr = r.logistica_osr || null;
+
+      const toteTipo = TOTE_POR_MATRIZ[matriz];
+
+      if (toteTipo) {
+        const capacidad = Number(r[CAMPO_CAPACIDAD[toteTipo]]) || 0;
+        if (capacidad > 0) {
+          const target = Math.round(capacidad * TARGET_OCUPACION);
+          const base = {
+            sku: r.sku,
+            descripcion: r.descripcion,
+            matriz,
+            tote_tipo: toteTipo,
+            capacidad_tote: capacidad,
+            target_unidades: target,
+            logistica_osr: logisticaOsr,
+            sugerencia_osr_origen: r.sugerencia_osr && r.sugerencia_osr !== "-" ? r.sugerencia_osr : null,
+          };
+
+          if (stockOsr > 0) {
+            if (stockOsr < target) {
+              reabastecer.push({
+                ...base,
+                ocupacion_actual: stockOsr,
+                ocupacion_pct: Number(((stockOsr / capacidad) * 100).toFixed(1)),
+                unidades_a_reponer: target - stockOsr,
+              });
+            }
+          } else if (logisticaOsr !== "N") {
+            incorporar.push({
+              ...base,
+              stock_total_disponible: stockTotal,
+              unidades_sugeridas: Math.min(target, stockTotal),
+            });
+          }
+        }
+      } else if (stockOsr > 0) {
+        recall.push({
+          sku: r.sku,
+          descripcion: r.descripcion,
+          matriz,
+          ocupacion_actual: stockOsr,
+          logistica_osr: logisticaOsr,
+        });
+      }
+    }
+
+    reabastecer.sort((a, b) => b.unidades_a_reponer - a.unidades_a_reponer);
+    incorporar.sort((a, b) => b.unidades_sugeridas - a.unidades_sugeridas);
+    recall.sort((a, b) => b.ocupacion_actual - a.ocupacion_actual);
+
+    res.json({
+      ok: true,
+      resumen: {
+        reabastecer: {
+          cantidad: reabastecer.length,
+          unidades_a_reponer: reabastecer.reduce((acc, s) => acc + s.unidades_a_reponer, 0),
+        },
+        incorporar: {
+          cantidad: incorporar.length,
+          unidades_sugeridas: incorporar.reduce((acc, s) => acc + s.unidades_sugeridas, 0),
+        },
+        recall: {
+          cantidad: recall.length,
+          unidades_a_liberar: recall.reduce((acc, s) => acc + s.ocupacion_actual, 0),
+        },
+      },
+      reabastecer: reabastecer.slice(0, TOP_SUGERENCIAS),
+      incorporar: incorporar.slice(0, TOP_SUGERENCIAS),
+      recall: recall.slice(0, TOP_SUGERENCIAS),
+    });
+  } catch (error) {
+    console.error("❌ Error en reabastecimiento OSR Inventario Cíclico:", error);
+    res.status(500).json({ ok: false, message: "Error calculando el reabastecimiento OSR" });
+  }
+};

@@ -10,6 +10,7 @@ import {
   obtenerAbcXyzCiclico,
   obtenerDispersionCiclico,
   obtenerConsolidacionCiclico,
+  obtenerOsrReabastecimientoCiclico,
 } from "../controllers/inventarioCiclicoController.js";
 import {
   obtenerCapacidadCd,
@@ -29,6 +30,7 @@ router.get("/:uploadId/resumen", verifyToken, obtenerResumenCiclico);
 router.get("/:uploadId/abc-xyz", verifyToken, obtenerAbcXyzCiclico);
 router.get("/:uploadId/dispersion", verifyToken, obtenerDispersionCiclico);
 router.get("/:uploadId/consolidacion", verifyToken, obtenerConsolidacionCiclico);
+router.get("/:uploadId/osr-reabastecimiento", verifyToken, obtenerOsrReabastecimientoCiclico);
 
 // Plan de inventario cíclico (priorización + calendario por turnos)
 router.put("/capacidad", verifyToken, guardarCapacidadCd);
