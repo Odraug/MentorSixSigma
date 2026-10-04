@@ -407,7 +407,8 @@ export const obtenerAbcXyzCiclico = async (req, res) => {
            SUM(ventas) AS ventas_total,
            SUM(stock_total) AS stock_total,
            COUNT(DISTINCT ubicacion) AS n_ubicaciones,
-           COUNT(DISTINCT cd) AS n_cds
+           COUNT(DISTINCT cd) AS n_cds,
+           ARRAY_AGG(DISTINCT cd) AS cds
          FROM ciclico_stock
          WHERE upload_id = $1
          GROUP BY sku
@@ -432,6 +433,7 @@ export const obtenerAbcXyzCiclico = async (req, res) => {
       for (const xyz of ["X", "Y", "Z"]) resumenMatriz[`${abc}${xyz}`] = 0;
     }
 
+    const matrizPorSku = {};
     const data = rows.map((r) => {
       const pct = Number(r.pct_acumulado);
       const abc = pct <= CORTE_A ? "A" : pct <= CORTE_B ? "B" : "C";
@@ -439,7 +441,9 @@ export const obtenerAbcXyzCiclico = async (req, res) => {
       const stock = Number(r.stock_total);
       const rotacion = stock > 0 ? ventas / stock : 0;
       const xyz = ventas <= 0 ? "Z" : rotacion >= ROT_X ? "X" : "Y";
-      resumenMatriz[`${abc}${xyz}`]++;
+      const matriz = `${abc}${xyz}`;
+      resumenMatriz[matriz]++;
+      matrizPorSku[r.sku] = matriz;
       return {
         sku: r.sku,
         descripcion: r.descripcion,
@@ -450,14 +454,46 @@ export const obtenerAbcXyzCiclico = async (req, res) => {
         rotacion: Number(rotacion.toFixed(2)),
         n_ubicaciones: Number(r.n_ubicaciones),
         n_cds: Number(r.n_cds),
+        cds: r.cds || [],
         pct_acumulado: pct,
         clase_abc: abc,
         clase_xyz: xyz,
-        matriz: `${abc}${xyz}`,
+        matriz,
       };
     });
 
-    res.json({ ok: true, total_skus: data.length, resumen_matriz: resumenMatriz, data });
+    // Apertura por CD: cuántas unidades (qty) tiene cada SKU en cada CD,
+    // reutilizando la clasificación ya calculada arriba por SKU.
+    const { rows: cdRows } = await pool.query(
+      `SELECT sku, cd, SUM(qty) AS unidades
+       FROM ciclico_stock
+       WHERE upload_id = $1
+       GROUP BY sku, cd`,
+      [uploadId]
+    );
+
+    const resumenCdMatrizMap = {};
+    for (const r of cdRows) {
+      const matriz = matrizPorSku[r.sku];
+      if (!matriz) continue;
+      const key = `${r.cd}|${matriz}`;
+      if (!resumenCdMatrizMap[key]) {
+        resumenCdMatrizMap[key] = { cd: r.cd, matriz, skus: 0, unidades: 0 };
+      }
+      resumenCdMatrizMap[key].skus += 1;
+      resumenCdMatrizMap[key].unidades += Number(r.unidades);
+    }
+    const resumenCdMatriz = Object.values(resumenCdMatrizMap).sort(
+      (a, b) => a.matriz.localeCompare(b.matriz) || a.cd.localeCompare(b.cd)
+    );
+
+    res.json({
+      ok: true,
+      total_skus: data.length,
+      resumen_matriz: resumenMatriz,
+      resumen_cd_matriz: resumenCdMatriz,
+      data,
+    });
   } catch (error) {
     console.error("❌ Error en ABC/XYZ Inventario Cíclico:", error);
     res.status(500).json({ ok: false, message: "Error calculando ABC/XYZ" });

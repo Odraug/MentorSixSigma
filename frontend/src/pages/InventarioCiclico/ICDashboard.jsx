@@ -23,6 +23,8 @@ const colorCelda = (abc, xyz) => GRADIENTE_MATRIZ[ABC_IDX[abc] + XYZ_IDX[xyz]];
 const DISPERSION_LABEL = { "1": "🟢 Excelente", "2": "🟢 Controlado", "3": "🟡 Revisar", "4": "🟠 Alto", "5+": "🔴 Crítico" };
 const BALDES = ["1", "2", "3", "4", "5+"];
 
+const CATEGORIAS_ORDEN = ["AX", "AY", "AZ", "BX", "BY", "BZ", "CX", "CY", "CZ"];
+
 const Kpi = ({ label, value, accent }) => (
   <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
     <p className="text-xs text-gray-500 mb-1">{label}</p>
@@ -41,6 +43,7 @@ export default function ICDashboard() {
   const [dispersion, setDispersion] = useState(null);
   const [consolidacion, setConsolidacion] = useState(null);
   const [filtroCd, setFiltroCd] = useState("");
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null); // { matriz, cd|null }
 
   useEffect(() => {
     const cargar = async () => {
@@ -255,42 +258,147 @@ export default function ICDashboard() {
               → Volumen de demanda: A (alto) a C (bajo) &nbsp;·&nbsp; ↓ Variabilidad: X (estable) a Z (errática)
             </p>
           </div>
+        </div>
+      )}
 
-          <div className="overflow-x-auto max-h-96 overflow-y-auto">
+      {/* Resumen por categoría y CD */}
+      {abcXyz && (
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
+          <h2 className="text-lg font-semibold text-indigo-300 mb-1">Resumen por categoría y CD</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Hacé clic en una categoría (o en un CD dentro de ella) para ver el detalle de SKU.
+          </p>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-gray-800">
+              <thead>
                 <tr className="text-left text-gray-400 border-b border-gray-700">
-                  <th className="p-2">SKU</th>
-                  <th className="p-2">Descripción</th>
-                  <th className="p-2">Ventas</th>
-                  <th className="p-2">Stock</th>
-                  <th className="p-2">N° ubic.</th>
-                  <th className="p-2">Matriz</th>
+                  <th className="p-2">Categoría</th>
+                  <th className="p-2">CD</th>
+                  <th className="p-2 text-right">SKU</th>
+                  <th className="p-2 text-right">Unidades</th>
                 </tr>
               </thead>
               <tbody>
-                {abcXyz.data.slice(0, 200).map((row) => (
-                  <tr key={row.sku} className="border-b border-gray-800">
-                    <td className="p-2">{row.sku}</td>
-                    <td className="p-2 text-gray-300">{row.descripcion}</td>
-                    <td className="p-2">{row.ventas_total.toLocaleString("es-CL")}</td>
-                    <td className="p-2">{row.stock_total.toLocaleString("es-CL")}</td>
-                    <td className="p-2">{row.n_ubicaciones}</td>
-                    <td className="p-2">
-                      <span className="px-2 py-1 rounded text-xs" style={{ background: colorCelda(row.matriz[0], row.matriz[1]) }}>
-                        {row.matriz}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {CATEGORIAS_ORDEN.map((matriz) => {
+                  const filasCd = (abcXyz.resumen_cd_matriz || []).filter((r) => r.matriz === matriz);
+                  const totalSkus = abcXyz.resumen_matriz[matriz] || 0;
+                  const totalUnidades = filasCd.reduce((acc, r) => acc + r.unidades, 0);
+                  const totalSeleccionado =
+                    categoriaSeleccionada?.matriz === matriz && !categoriaSeleccionada?.cd;
+                  return (
+                    <React.Fragment key={matriz}>
+                      <tr
+                        className={`border-b border-gray-800 cursor-pointer hover:bg-gray-700/50 ${
+                          totalSeleccionado ? "bg-indigo-900/40" : ""
+                        }`}
+                        onClick={() => setCategoriaSeleccionada({ matriz, cd: null })}
+                      >
+                        <td className="p-2 font-semibold">
+                          <span
+                            className="inline-block w-3 h-3 rounded-sm mr-2 align-middle"
+                            style={{ background: colorCelda(matriz[0], matriz[1]) }}
+                          />
+                          {matriz}
+                          <span className="text-[10px] text-gray-500 ml-1">({CELL_LABEL[matriz]})</span>
+                        </td>
+                        <td className="p-2 text-gray-500">Todos</td>
+                        <td className="p-2 text-right font-semibold">{totalSkus.toLocaleString("es-CL")}</td>
+                        <td className="p-2 text-right font-semibold">{totalUnidades.toLocaleString("es-CL")}</td>
+                      </tr>
+                      {filasCd.map((r) => {
+                        const seleccionada =
+                          categoriaSeleccionada?.matriz === matriz && categoriaSeleccionada?.cd === r.cd;
+                        return (
+                          <tr
+                            key={`${matriz}-${r.cd}`}
+                            className={`border-b border-gray-800/50 cursor-pointer hover:bg-gray-700/50 ${
+                              seleccionada ? "bg-indigo-900/40" : ""
+                            }`}
+                            onClick={() => setCategoriaSeleccionada({ matriz, cd: r.cd })}
+                          >
+                            <td className="p-2 pl-6 text-gray-500">{matriz}</td>
+                            <td className="p-2">{r.cd}</td>
+                            <td className="p-2 text-right">{r.skus.toLocaleString("es-CL")}</td>
+                            <td className="p-2 text-right">{r.unidades.toLocaleString("es-CL")}</td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          {abcXyz.data.length > 200 && (
-            <p className="text-xs text-gray-500 mt-2">
-              Mostrando los primeros 200 de {abcXyz.total_skus} SKU (ordenados por ventas).
-            </p>
-          )}
+        </div>
+      )}
+
+      {/* Detalle de SKU de la categoría/CD seleccionada */}
+      {abcXyz && categoriaSeleccionada && (
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+            <h2 className="text-lg font-semibold text-indigo-300">
+              Detalle — {categoriaSeleccionada.matriz}
+              {categoriaSeleccionada.cd ? ` · ${categoriaSeleccionada.cd}` : " · todos los CD"}
+            </h2>
+            <button
+              onClick={() => setCategoriaSeleccionada(null)}
+              className="text-gray-400 hover:text-white text-sm"
+            >
+              ✕ Cerrar
+            </button>
+          </div>
+          {(() => {
+            const filtrados = abcXyz.data.filter(
+              (row) =>
+                row.matriz === categoriaSeleccionada.matriz &&
+                (!categoriaSeleccionada.cd || (row.cds || []).includes(categoriaSeleccionada.cd))
+            );
+            return (
+              <>
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-gray-800">
+                      <tr className="text-left text-gray-400 border-b border-gray-700">
+                        <th className="p-2">SKU</th>
+                        <th className="p-2">Descripción</th>
+                        <th className="p-2">Ventas</th>
+                        <th className="p-2">Stock</th>
+                        <th className="p-2">N° ubic.</th>
+                        <th className="p-2">Matriz</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtrados.slice(0, 200).map((row) => (
+                        <tr key={row.sku} className="border-b border-gray-800">
+                          <td className="p-2">{row.sku}</td>
+                          <td className="p-2 text-gray-300">{row.descripcion}</td>
+                          <td className="p-2">{row.ventas_total.toLocaleString("es-CL")}</td>
+                          <td className="p-2">{row.stock_total.toLocaleString("es-CL")}</td>
+                          <td className="p-2">{row.n_ubicaciones}</td>
+                          <td className="p-2">
+                            <span
+                              className="px-2 py-1 rounded text-xs"
+                              style={{ background: colorCelda(row.matriz[0], row.matriz[1]) }}
+                            >
+                              {row.matriz}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filtrados.length > 200 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Mostrando los primeros 200 de {filtrados.length} SKU (ordenados por ventas).
+                  </p>
+                )}
+                {filtrados.length === 0 && (
+                  <p className="text-sm text-gray-500 py-3">No hay SKU en esta categoría.</p>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
