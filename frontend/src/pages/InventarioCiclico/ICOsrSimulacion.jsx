@@ -15,10 +15,12 @@ export default function ICOsrSimulacion() {
   const [capacidad, setCapacidad] = useState([]);
   const [guardando, setGuardando] = useState(false);
   const [objetivoUnidades, setObjetivoUnidades] = useState(900000);
-  const [objetivoSkus, setObjetivoSkus] = useState("");
+  const [objetivoInput, setObjetivoInput] = useState("900000");
 
-  const cargarSimulacion = async () => {
-    const resp = await apiGet(`/inventario-ciclico/${uploadId}/osr-simulacion`);
+  const cargarSimulacion = async (objetivo) => {
+    const resp = await apiGet(
+      `/inventario-ciclico/${uploadId}/osr-simulacion?objetivo_unidades=${objetivo}`
+    );
     if (resp.ok) {
       setSimulacion(resp);
     } else {
@@ -36,7 +38,7 @@ export default function ICOsrSimulacion() {
       setCargando(true);
       setError("");
       try {
-        await Promise.all([cargarSimulacion(), cargarCapacidad()]);
+        await Promise.all([cargarSimulacion(objetivoUnidades), cargarCapacidad()]);
       } catch (err) {
         console.error("❌ Error cargando simulación OSR:", err);
         setError("No se pudo cargar la simulación");
@@ -46,6 +48,17 @@ export default function ICOsrSimulacion() {
     };
     cargar();
   }, [uploadId]);
+
+  const recalcularObjetivo = async () => {
+    const nuevoObjetivo = Number(objetivoInput) || 0;
+    setObjetivoUnidades(nuevoObjetivo);
+    setCargando(true);
+    try {
+      await cargarSimulacion(nuevoObjetivo);
+    } finally {
+      setCargando(false);
+    }
+  };
 
   const capacidadOsr = capacidad.find((c) => c.cd === "OSR") || {
     cd: "OSR",
@@ -64,11 +77,11 @@ export default function ICOsrSimulacion() {
     });
   };
 
-  const guardarYRecalcular = async () => {
+  const guardarCapacidad = async () => {
     setGuardando(true);
     try {
       await apiPut("/inventario-ciclico/capacidad", { capacidad });
-      await cargarSimulacion();
+      await cargarSimulacion(objetivoUnidades);
       await cargarCapacidad();
     } catch (err) {
       console.error("❌ Error guardando capacidad OSR:", err);
@@ -99,11 +112,7 @@ export default function ICOsrSimulacion() {
     );
   }
 
-  const { estado_actual, estado_proyectado, delta, capacidad: cap, tiempo_estimado, resumen_acciones, por_categoria } = simulacion;
-
-  const objetivoSkusNum = Number(objetivoSkus) || 0;
-  const pctUnidadesObjetivo = objetivoUnidades > 0 ? (estado_proyectado.unidades / objetivoUnidades) * 100 : null;
-  const pctSkusObjetivo = objetivoSkusNum > 0 ? (estado_proyectado.skus / objetivoSkusNum) * 100 : null;
+  const { estado_actual, tras_recall, estado_proyectado, delta, recall, relleno, tiempo_estimado } = simulacion;
 
   const diasPara = (cantidad) =>
     tiempo_estimado.capacidad_diaria > 0 ? Math.ceil(cantidad / tiempo_estimado.capacidad_diaria) : null;
@@ -111,9 +120,13 @@ export default function ICOsrSimulacion() {
   const formatearDias = (dias) => {
     if (dias === null) return "—";
     if (dias <= 0) return "0 días";
-    const semanas = (dias / 5).toFixed(1); // días hábiles -> semanas laborales
+    const semanas = (dias / 5).toFixed(1);
     return `${dias.toLocaleString("es-CL")} días hábiles (~${semanas} semanas)`;
   };
+
+  const pctObjetivoAlcanzado = simulacion.objetivo_unidades > 0
+    ? (estado_proyectado.unidades / simulacion.objetivo_unidades) * 100
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
@@ -138,22 +151,172 @@ export default function ICOsrSimulacion() {
       </div>
 
       <p className="text-sm text-gray-400 mb-6 max-w-3xl">
-        Simula el resultado de ejecutar las 3 acciones del bloque "Sugerencia de reabastecimiento OSR"
-        (recall + reabastecer + incorporar) sobre esta carga: cómo quedaría el OSR, cuánta capacidad se
-        libera, y en cuánto tiempo se podría completar según el ritmo de trabajo que configures.
+        Simula cómo llegar a una capacidad objetivo de unidades en el OSR: primero hace recall de los SKU
+        de baja rotación (libera espacio) y después reparte lo que falta hasta el objetivo entre las
+        categorías AX/AY/BX, proporcional a cuánto ocupa cada una hoy, y dentro de cada una, proporcional
+        a las ventas de cada SKU.
       </p>
 
-      {/* Capacidad OSR */}
+      {/* Objetivo */}
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
-        <h2 className="text-lg font-semibold text-indigo-300 mb-1">Ritmo de trabajo del OSR</h2>
+        <h2 className="text-lg font-semibold text-indigo-300 mb-1">Capacidad objetivo del OSR</h2>
+        <p className="text-xs text-gray-500 mb-4">Cuánto querés que el OSR llegue a almacenar en total.</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Objetivo — Unidades</label>
+            <input
+              type="number"
+              min={0}
+              value={objetivoInput}
+              onChange={(e) => setObjetivoInput(e.target.value)}
+              className="p-2 text-black rounded w-40"
+            />
+          </div>
+          <button
+            onClick={recalcularObjetivo}
+            className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg"
+          >
+            Recalcular
+          </button>
+        </div>
+      </div>
+
+      {/* Estado actual / tras recall / proyectado */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <p className="text-xs text-gray-500 mb-2">Estado actual del OSR</p>
+          <p className="text-2xl font-bold">{fmt(estado_actual.skus)} <span className="text-sm font-normal text-gray-400">SKU</span></p>
+          <p className="text-lg text-gray-300">{fmt(estado_actual.unidades)} unidades</p>
+        </div>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <p className="text-xs text-gray-500 mb-2">Tras el recall</p>
+          <p className="text-2xl font-bold">{fmt(tras_recall.skus)} <span className="text-sm font-normal text-gray-400">SKU</span></p>
+          <p className="text-lg text-gray-300">{fmt(tras_recall.unidades)} unidades</p>
+        </div>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <p className="text-xs text-gray-500 mb-2">Proyectado (recall + relleno al objetivo)</p>
+          <p className="text-2xl font-bold">{fmt(estado_proyectado.skus)} <span className="text-sm font-normal text-gray-400">SKU</span></p>
+          <p className="text-lg text-gray-300">{fmt(estado_proyectado.unidades)} unidades</p>
+          {pctObjetivoAlcanzado !== null && (
+            <p className="text-xs text-indigo-300 mt-1">{pctObjetivoAlcanzado.toFixed(1)}% del objetivo</p>
+          )}
+        </div>
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+          <p className="text-xs text-gray-500 mb-2">Variación total</p>
+          <p className={`text-2xl font-bold ${delta.skus >= 0 ? "text-green-400" : "text-amber-400"}`}>
+            {delta.skus >= 0 ? "+" : ""}{fmt(delta.skus)} <span className="text-sm font-normal text-gray-400">SKU</span>
+          </p>
+          <p className={`text-lg ${delta.unidades >= 0 ? "text-green-400" : "text-amber-400"}`}>
+            {delta.unidades >= 0 ? "+" : ""}{fmt(delta.unidades)} unidades
+          </p>
+        </div>
+      </div>
+
+      {/* Relleno hasta el objetivo */}
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
+        <h2 className="text-lg font-semibold text-indigo-300 mb-3">Relleno hasta el objetivo</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+          <div>
+            <p className="text-xs text-gray-500">Falta para el objetivo (tras recall)</p>
+            <p className="text-xl font-bold text-amber-400">{fmt(relleno.gap_total)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Se logra cubrir</p>
+            <p className="text-xl font-bold text-green-400">{fmt(relleno.gap_cubierto)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Déficit (sin stock suficiente en la red)</p>
+            <p className={`text-xl font-bold ${relleno.shortfall > 0 ? "text-red-400" : "text-gray-500"}`}>
+              {fmt(relleno.shortfall)}
+            </p>
+          </div>
+        </div>
+        {relleno.shortfall > 0 && (
+          <p className="text-sm text-amber-400 mb-4">
+            No hay stock suficiente en el resto de la red para llegar 100% al objetivo — esto es lo máximo
+            alcanzable con el stock actual de AX/AY/BX.
+          </p>
+        )}
+
+        <h3 className="text-sm font-semibold text-gray-300 mb-2">Apertura por categoría</h3>
+        <div className="overflow-x-auto mb-2">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-400 border-b border-gray-700">
+                <th className="p-2">Categoría</th>
+                <th className="p-2 text-right">Unidades actual</th>
+                <th className="p-2 text-right">Unidades asignadas</th>
+                <th className="p-2 text-right">Unidades proyectado</th>
+                <th className="p-2 text-right">SKU nuevos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {["AX", "AY", "BX"].map((m) => {
+                const c = relleno.por_categoria[m];
+                return (
+                  <tr key={m} className="border-b border-gray-800">
+                    <td className="p-2">{m}</td>
+                    <td className="p-2 text-right">{fmt(c.unidades_actual)}</td>
+                    <td className="p-2 text-right text-green-400">+{fmt(c.unidades_asignadas)}</td>
+                    <td className="p-2 text-right font-semibold">{fmt(c.unidades_proyectado)}</td>
+                    <td className="p-2 text-right">{fmt(c.skus_nuevos)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <h3 className="text-sm font-semibold text-gray-300 mb-2 mt-4">
+          Detalle por SKU ({fmt(relleno.total_skus_con_asignacion)} con asignación)
+        </h3>
+        <div className="overflow-x-auto max-h-80 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-gray-800">
+              <tr className="text-left text-gray-400 border-b border-gray-700">
+                <th className="p-2">SKU</th>
+                <th className="p-2">Descripción</th>
+                <th className="p-2">Cat.</th>
+                <th className="p-2">Tote</th>
+                <th className="p-2 text-right">Stock OSR actual</th>
+                <th className="p-2 text-right">A sumar</th>
+                <th className="p-2 text-right">Nuevo total</th>
+                <th className="p-2 text-right">Totes estimados</th>
+              </tr>
+            </thead>
+            <tbody>
+              {relleno.detalle.map((d) => (
+                <tr key={d.sku} className="border-b border-gray-800">
+                  <td className="p-2">{d.sku}</td>
+                  <td className="p-2 text-gray-300">{d.descripcion}</td>
+                  <td className="p-2">{d.matriz}</td>
+                  <td className="p-2 text-gray-400">{d.tote_tipo}</td>
+                  <td className="p-2 text-right">{fmt(d.stock_en_osr_actual)}</td>
+                  <td className="p-2 text-right text-green-400">+{fmt(d.unidades_asignadas)}</td>
+                  <td className="p-2 text-right font-semibold">{fmt(d.nuevo_total_osr)}</td>
+                  <td className="p-2 text-right">{d.totes_estimados ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {relleno.total_skus_con_asignacion > relleno.detalle.length && (
+          <p className="text-xs text-gray-500 mt-2">
+            Mostrando los {relleno.detalle.length} de mayor asignación de {relleno.total_skus_con_asignacion}.
+          </p>
+        )}
+      </div>
+
+      {/* Ritmo de trabajo y tiempo estimado */}
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
+        <h2 className="text-lg font-semibold text-indigo-300 mb-1">Tiempo estimado para completar la optimización</h2>
         <p className="text-xs text-gray-500 mb-4">
-          Cuántas tareas (recall, reabastecer o incorporar un SKU) puede ejecutar el equipo del OSR por
-          turno.{" "}
+          Cuántas tareas (recall o sumar stock a un SKU) puede ejecutar el equipo del OSR por turno.{" "}
           {!capacidadOsr.configurado && (
             <span className="text-amber-400">Todavía no configuraste esto — se usa un valor por defecto.</span>
           )}
         </p>
-        <div className="flex flex-wrap items-end gap-4">
+        <div className="flex flex-wrap items-end gap-4 mb-5">
           <div>
             <label className="block text-xs text-gray-400 mb-1">Tareas por turno</label>
             <input
@@ -176,172 +339,20 @@ export default function ICOsrSimulacion() {
             />
           </div>
           <button
-            onClick={guardarYRecalcular}
+            onClick={guardarCapacidad}
             disabled={guardando}
             className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 px-4 py-2 rounded-lg"
           >
-            {guardando ? "Recalculando..." : "Guardar y recalcular"}
+            {guardando ? "Guardando..." : "Guardar y recalcular"}
           </button>
           <p className="text-xs text-gray-500">
             = {fmt(capacidadOsr.capacidad_por_turno * capacidadOsr.turnos_por_dia)} tareas/día
           </p>
         </div>
-      </div>
 
-      {/* Antes / después */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-2">Estado actual del OSR</p>
-          <p className="text-2xl font-bold">{fmt(estado_actual.skus)} <span className="text-sm font-normal text-gray-400">SKU</span></p>
-          <p className="text-lg text-gray-300">{fmt(estado_actual.unidades)} unidades</p>
-        </div>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-2">Estado proyectado (tras recall + reabastecer + incorporar)</p>
-          <p className="text-2xl font-bold">{fmt(estado_proyectado.skus)} <span className="text-sm font-normal text-gray-400">SKU</span></p>
-          <p className="text-lg text-gray-300">{fmt(estado_proyectado.unidades)} unidades</p>
-        </div>
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-2">Variación</p>
-          <p className={`text-2xl font-bold ${delta.skus >= 0 ? "text-green-400" : "text-amber-400"}`}>
-            {delta.skus >= 0 ? "+" : ""}{fmt(delta.skus)} <span className="text-sm font-normal text-gray-400">SKU</span>
-          </p>
-          <p className={`text-lg ${delta.unidades >= 0 ? "text-green-400" : "text-amber-400"}`}>
-            {delta.unidades >= 0 ? "+" : ""}{fmt(delta.unidades)} unidades
-          </p>
-        </div>
-      </div>
-
-      {/* Capacidad objetivo del OSR */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
-        <h2 className="text-lg font-semibold text-indigo-300 mb-1">Capacidad objetivo del OSR</h2>
-        <p className="text-xs text-gray-500 mb-4">
-          Cuánto querés que el OSR llegue a almacenar en total. Cómo se reparte ese objetivo entre
-          AX/AY/BX todavía no está definido — por ahora se muestra la participación que surge del cálculo
-          por SKU (85% del tote de cada uno), no un reparto impuesto desde el objetivo.
-        </p>
-        <div className="flex flex-wrap items-end gap-4 mb-4">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Objetivo — Unidades</label>
-            <input
-              type="number"
-              min={0}
-              value={objetivoUnidades}
-              onChange={(e) => setObjetivoUnidades(Number(e.target.value) || 0)}
-              className="p-2 text-black rounded w-36"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Objetivo — SKU</label>
-            <input
-              type="number"
-              min={0}
-              value={objetivoSkus}
-              onChange={(e) => setObjetivoSkus(e.target.value)}
-              placeholder="opcional"
-              className="p-2 text-black rounded w-32"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-          <div>
-            <p className="text-xs text-gray-500">Unidades proyectadas vs. objetivo</p>
-            <p className="text-xl font-bold">
-              {fmt(estado_proyectado.unidades)} / {fmt(objetivoUnidades)}
-              {pctUnidadesObjetivo !== null && (
-                <span className="text-sm font-normal text-gray-400 ml-2">({pctUnidadesObjetivo.toFixed(1)}%)</span>
-              )}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">SKU proyectados vs. objetivo</p>
-            <p className="text-xl font-bold">
-              {fmt(estado_proyectado.skus)}{objetivoSkusNum > 0 ? ` / ${fmt(objetivoSkusNum)}` : ""}
-              {pctSkusObjetivo !== null && (
-                <span className="text-sm font-normal text-gray-400 ml-2">({pctSkusObjetivo.toFixed(1)}%)</span>
-              )}
-            </p>
-          </div>
-        </div>
-
-        <h3 className="text-sm font-semibold text-gray-300 mb-2">Participación por categoría ABC/XYZ</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-400 border-b border-gray-700">
-                <th className="p-2">Categoría</th>
-                <th className="p-2 text-right">SKU actual</th>
-                <th className="p-2 text-right">Unidades actual</th>
-                <th className="p-2 text-right">SKU proyectado</th>
-                <th className="p-2 text-right">Unidades proyectado</th>
-                <th className="p-2 text-right">% participación</th>
-              </tr>
-            </thead>
-            <tbody>
-              {["AX", "AY", "BX"].map((m) => {
-                const c = por_categoria[m];
-                return (
-                  <tr key={m} className="border-b border-gray-800">
-                    <td className="p-2">{m}</td>
-                    <td className="p-2 text-right">{fmt(c.skus_actual)}</td>
-                    <td className="p-2 text-right">{fmt(c.unidades_actual)}</td>
-                    <td className="p-2 text-right">{fmt(c.skus_proyectado)}</td>
-                    <td className="p-2 text-right">{fmt(c.unidades_proyectado)}</td>
-                    <td className="p-2 text-right">{c.participacion_pct}%</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-gray-500 mt-3">
-          Cuando definamos el criterio para repartir el objetivo total por categoría (¿proporcional a SKU?
-          ¿a ventas? ¿a esta participación ya calculada?), este bloque puede ajustar los montos de
-          reabastecer/incorporar para apuntar directo al objetivo en vez de al 85% del tote individual.
-        </p>
-      </div>
-
-      {/* Capacidad liberada vs necesaria */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
-        <h2 className="text-lg font-semibold text-indigo-300 mb-3">Capacidad liberada vs. necesaria</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
-          <div>
-            <p className="text-xs text-gray-500">Unidades liberadas por recall</p>
-            <p className="text-xl font-bold text-red-400">{fmt(cap.unidades_liberadas_recall)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">Unidades necesarias (reabastecer + incorporar)</p>
-            <p className="text-xl font-bold text-amber-400">{fmt(cap.unidades_necesarias_reabastecer_incorporar)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">Cobertura</p>
-            <p className="text-xl font-bold text-green-400">
-              {cap.cobertura_pct !== null ? `${cap.cobertura_pct}%` : "—"}
-            </p>
-          </div>
-        </div>
-        {cap.cobertura_pct !== null && cap.cobertura_pct > 100 && (
-          <p className="text-sm text-gray-400">
-            Lo que libera el recall alcanza y sobra para cubrir el reabastecimiento y la incorporación de
-            nuevos SKU — queda margen para seguir sumando SKU de alta rotación al OSR además de lo ya
-            sugerido.
-          </p>
-        )}
-        {cap.cobertura_pct !== null && cap.cobertura_pct <= 100 && (
-          <p className="text-sm text-amber-400">
-            Lo que libera el recall no alcanza a cubrir todo lo necesario para reabastecer e incorporar —
-            conviene priorizar el recall de mayor volumen primero.
-          </p>
-        )}
-      </div>
-
-      {/* Tiempo estimado */}
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
-        <h2 className="text-lg font-semibold text-indigo-300 mb-3">Tiempo estimado para completar la optimización</h2>
         <p className="text-2xl font-bold text-indigo-300 mb-1">{formatearDias(tiempo_estimado.dias_habiles)}</p>
         <p className="text-xs text-gray-500 mb-4">
-          {fmt(tiempo_estimado.total_tareas)} tareas en total ÷ {fmt(tiempo_estimado.capacidad_diaria)} tareas/día
-          ({fmt(tiempo_estimado.capacidad_por_turno)} por turno × {tiempo_estimado.turnos_por_dia} turnos).
+          {fmt(tiempo_estimado.total_tareas)} tareas en total ÷ {fmt(tiempo_estimado.capacidad_diaria)} tareas/día.
         </p>
 
         <div className="overflow-x-auto">
@@ -357,29 +368,23 @@ export default function ICOsrSimulacion() {
             <tbody>
               <tr className="border-b border-gray-800">
                 <td className="p-2 text-red-400">Recall</td>
-                <td className="p-2 text-right">{fmt(resumen_acciones.recall.cantidad)}</td>
-                <td className="p-2 text-right">{fmt(resumen_acciones.recall.unidades)}</td>
-                <td className="p-2 text-right">{formatearDias(diasPara(resumen_acciones.recall.cantidad))}</td>
+                <td className="p-2 text-right">{fmt(recall.cantidad)}</td>
+                <td className="p-2 text-right">{fmt(recall.unidades_liberadas)}</td>
+                <td className="p-2 text-right">{formatearDias(diasPara(recall.cantidad))}</td>
               </tr>
               <tr className="border-b border-gray-800">
-                <td className="p-2 text-amber-400">Reabastecer</td>
-                <td className="p-2 text-right">{fmt(resumen_acciones.reabastecer.cantidad)}</td>
-                <td className="p-2 text-right">{fmt(resumen_acciones.reabastecer.unidades)}</td>
-                <td className="p-2 text-right">{formatearDias(diasPara(resumen_acciones.reabastecer.cantidad))}</td>
-              </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-2 text-green-400">Incorporar</td>
-                <td className="p-2 text-right">{fmt(resumen_acciones.incorporar.cantidad)}</td>
-                <td className="p-2 text-right">{fmt(resumen_acciones.incorporar.unidades)}</td>
-                <td className="p-2 text-right">{formatearDias(diasPara(resumen_acciones.incorporar.cantidad))}</td>
+                <td className="p-2 text-green-400">Relleno (reabastecer + incorporar)</td>
+                <td className="p-2 text-right">{fmt(relleno.total_skus_con_asignacion)}</td>
+                <td className="p-2 text-right">{fmt(relleno.gap_cubierto)}</td>
+                <td className="p-2 text-right">{formatearDias(diasPara(relleno.total_skus_con_asignacion))}</td>
               </tr>
             </tbody>
           </table>
         </div>
         <p className="text-xs text-gray-500 mt-3">
-          El recall concentra la mayoría de las tareas. Si primero se hace solo reabastecer + incorporar
-          (más rápido) y el recall se ejecuta en paralelo o en una segunda etapa, el OSR mejora su
-          composición mucho antes de terminar el recall completo.
+          El recall concentra la mayoría de las tareas. Si primero se hace solo el relleno (más rápido) y
+          el recall se ejecuta en paralelo o en una segunda etapa, el OSR mejora su composición mucho antes
+          de terminar el recall completo.
         </p>
       </div>
     </div>
