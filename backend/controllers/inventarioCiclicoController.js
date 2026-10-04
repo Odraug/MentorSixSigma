@@ -462,10 +462,11 @@ export const obtenerAbcXyzCiclico = async (req, res) => {
       };
     });
 
-    // Apertura por CD: cuántas unidades (qty) tiene cada SKU en cada CD,
-    // reutilizando la clasificación ya calculada arriba por SKU.
+    // Apertura por CD: cuántas unidades vendidas (qty) y cuánto stock actual
+    // (stock_total) tiene cada SKU en cada CD, reutilizando la clasificación
+    // ya calculada arriba por SKU.
     const { rows: cdRows } = await pool.query(
-      `SELECT sku, cd, SUM(qty) AS unidades
+      `SELECT sku, cd, SUM(qty) AS unidades, SUM(stock_total) AS stock
        FROM ciclico_stock
        WHERE upload_id = $1
        GROUP BY sku, cd`,
@@ -478,10 +479,11 @@ export const obtenerAbcXyzCiclico = async (req, res) => {
       if (!matriz) continue;
       const key = `${r.cd}|${matriz}`;
       if (!resumenCdMatrizMap[key]) {
-        resumenCdMatrizMap[key] = { cd: r.cd, matriz, skus: 0, unidades: 0 };
+        resumenCdMatrizMap[key] = { cd: r.cd, matriz, skus: 0, unidades: 0, stock: 0 };
       }
       resumenCdMatrizMap[key].skus += 1;
       resumenCdMatrizMap[key].unidades += Number(r.unidades);
+      resumenCdMatrizMap[key].stock += Number(r.stock);
     }
     const resumenCdMatriz = Object.values(resumenCdMatrizMap).sort(
       (a, b) => a.matriz.localeCompare(b.matriz) || a.cd.localeCompare(b.cd)

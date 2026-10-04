@@ -272,8 +272,8 @@ export default function ICDashboard() {
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
             <h2 className="text-lg font-semibold text-indigo-300 mb-1">Resumen por categoría y CD</h2>
             <p className="text-xs text-gray-500 mb-3">
-              SKU y unidades por celda. Hacé clic en una celda, en un encabezado de categoría o en un CD
-              para ver el detalle.
+              Cada celda: SKU · unidades vendidas · stock actual. Hacé clic en una celda, en un
+              encabezado de categoría o en un CD para ver el detalle.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
@@ -294,13 +294,14 @@ export default function ICDashboard() {
                         {matriz}
                       </th>
                     ))}
-                    <th className="p-2 text-center">Total</th>
+                    <th className="p-2 text-center">Total CD</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cds.map((cd) => {
                     let totalSkuCd = 0;
                     let totalUnidCd = 0;
+                    let totalStockCd = 0;
                     return (
                       <tr key={cd} className="border-b border-gray-800">
                         <td
@@ -313,8 +314,10 @@ export default function ICDashboard() {
                           const c = celda[`${cd}|${matriz}`];
                           const skus = c?.skus || 0;
                           const unidades = c?.unidades || 0;
+                          const stock = c?.stock || 0;
                           totalSkuCd += skus;
                           totalUnidCd += unidades;
+                          totalStockCd += stock;
                           const seleccionada =
                             categoriaSeleccionada?.matriz === matriz && categoriaSeleccionada?.cd === cd;
                           return (
@@ -329,7 +332,8 @@ export default function ICDashboard() {
                               {skus > 0 ? (
                                 <>
                                   <div className="font-semibold">{skus.toLocaleString("es-CL")}</div>
-                                  <div className="text-[10px] opacity-90">{unidades.toLocaleString("es-CL")} u.</div>
+                                  <div className="text-[10px] opacity-90">{unidades.toLocaleString("es-CL")} vta.</div>
+                                  <div className="text-[10px] opacity-75">{stock.toLocaleString("es-CL")} stock</div>
                                 </>
                               ) : (
                                 <span className="text-gray-600">—</span>
@@ -339,26 +343,36 @@ export default function ICDashboard() {
                         })}
                         <td className="p-2 text-center font-semibold bg-gray-900/40">
                           <div>{totalSkuCd.toLocaleString("es-CL")}</div>
-                          <div className="text-[10px] text-gray-400">{totalUnidCd.toLocaleString("es-CL")} u.</div>
+                          <div className="text-[10px] text-gray-400">{totalUnidCd.toLocaleString("es-CL")} vta.</div>
+                          <div className="text-[10px] text-gray-400">{totalStockCd.toLocaleString("es-CL")} stock</div>
                         </td>
                       </tr>
                     );
                   })}
                   <tr className="bg-gray-900/40">
-                    <td className="p-2 font-semibold sticky left-0 bg-gray-900/40">Total</td>
+                    <td className="p-2 font-semibold sticky left-0 bg-gray-900/40">Total general</td>
                     {CATEGORIAS_ORDEN.map((matriz) => {
                       const totalSkus = abcXyz.resumen_matriz[matriz] || 0;
-                      const totalUnid = filas
-                        .filter((r) => r.matriz === matriz)
-                        .reduce((acc, r) => acc + r.unidades, 0);
+                      const filasCategoria = filas.filter((r) => r.matriz === matriz);
+                      const totalUnid = filasCategoria.reduce((acc, r) => acc + r.unidades, 0);
+                      const totalStock = filasCategoria.reduce((acc, r) => acc + r.stock, 0);
                       return (
                         <td key={matriz} className="p-2 text-center font-semibold">
                           <div>{totalSkus.toLocaleString("es-CL")}</div>
-                          <div className="text-[10px] text-gray-400">{totalUnid.toLocaleString("es-CL")} u.</div>
+                          <div className="text-[10px] text-gray-400">{totalUnid.toLocaleString("es-CL")} vta.</div>
+                          <div className="text-[10px] text-gray-400">{totalStock.toLocaleString("es-CL")} stock</div>
                         </td>
                       );
                     })}
-                    <td className="p-2 text-center font-bold">{abcXyz.total_skus.toLocaleString("es-CL")}</td>
+                    <td className="p-2 text-center font-bold">
+                      <div>{abcXyz.total_skus.toLocaleString("es-CL")}</div>
+                      <div className="text-[10px] text-gray-400 font-normal">
+                        {filas.reduce((acc, r) => acc + r.unidades, 0).toLocaleString("es-CL")} vta.
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-normal">
+                        {filas.reduce((acc, r) => acc + r.stock, 0).toLocaleString("es-CL")} stock
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
