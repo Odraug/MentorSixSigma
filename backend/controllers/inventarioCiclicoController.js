@@ -680,6 +680,18 @@ const calcularOsrReabastecimiento = async (uploadId) => {
     const incorporar = [];
     const recall = [];
 
+    // Apertura por categoría AX/AY/BX: cuánto hay hoy en el OSR y cuánto
+    // quedaría tras reabastecer+incorporar (el recall nunca toca estas 3
+    // categorías por definición). Sirve de base para repartir una capacidad
+    // objetivo del OSR por categoría más adelante.
+    const porCategoria = {};
+    for (const m of Object.keys(TOTE_POR_MATRIZ)) {
+      porCategoria[m] = { skus_actual: 0, unidades_actual: 0, skus_proyectado: 0, unidades_proyectado: 0 };
+    }
+
+    let skusEnOsr = 0;
+    let unidadesEnOsr = 0;
+
     for (const r of rows) {
       const pct = Number(r.pct_acumulado);
       const abc = pct <= CORTE_A ? "A" : pct <= CORTE_B ? "B" : "C";
@@ -692,9 +704,21 @@ const calcularOsrReabastecimiento = async (uploadId) => {
       const stockOsr = Number(r.stock_en_osr) || 0;
       const logisticaOsr = r.logistica_osr || null;
 
+      if (stockOsr > 0) {
+        skusEnOsr++;
+        unidadesEnOsr += stockOsr;
+      }
+
       const toteTipo = TOTE_POR_MATRIZ[matriz];
 
       if (toteTipo) {
+        if (stockOsr > 0) {
+          porCategoria[matriz].skus_actual++;
+          porCategoria[matriz].unidades_actual += stockOsr;
+          porCategoria[matriz].skus_proyectado++;
+          porCategoria[matriz].unidades_proyectado += stockOsr;
+        }
+
         const capacidad = Number(r[CAMPO_CAPACIDAD[toteTipo]]) || 0;
         if (capacidad > 0) {
           const target = Math.round(capacidad * TARGET_OCUPACION);
@@ -711,19 +735,24 @@ const calcularOsrReabastecimiento = async (uploadId) => {
 
           if (stockOsr > 0) {
             if (stockOsr < target) {
+              const unidadesAReponer = target - stockOsr;
               reabastecer.push({
                 ...base,
                 ocupacion_actual: stockOsr,
                 ocupacion_pct: Number(((stockOsr / capacidad) * 100).toFixed(1)),
-                unidades_a_reponer: target - stockOsr,
+                unidades_a_reponer: unidadesAReponer,
               });
+              porCategoria[matriz].unidades_proyectado += unidadesAReponer;
             }
           } else if (logisticaOsr !== "N") {
+            const unidadesSugeridas = Math.min(target, stockTotal);
             incorporar.push({
               ...base,
               stock_total_disponible: stockTotal,
-              unidades_sugeridas: Math.min(target, stockTotal),
+              unidades_sugeridas: unidadesSugeridas,
             });
+            porCategoria[matriz].skus_proyectado++;
+            porCategoria[matriz].unidades_proyectado += unidadesSugeridas;
           }
         }
       } else if (stockOsr > 0) {
@@ -741,23 +770,12 @@ const calcularOsrReabastecimiento = async (uploadId) => {
     incorporar.sort((a, b) => b.unidades_sugeridas - a.unidades_sugeridas);
     recall.sort((a, b) => b.ocupacion_actual - a.ocupacion_actual);
 
-    // Estado actual real del OSR: todo SKU con stock_en_osr>0, sin importar
-    // su categoría (incluye AX/AY/BX ya óptimos, que no caen en ninguna bolsa).
-    let skusEnOsr = 0;
-    let unidadesEnOsr = 0;
-    for (const r of rows) {
-      const stockOsr = Number(r.stock_en_osr) || 0;
-      if (stockOsr > 0) {
-        skusEnOsr++;
-        unidadesEnOsr += stockOsr;
-      }
-    }
-
     return {
       reabastecer,
       incorporar,
       recall,
       estadoActualOsr: { skus: skusEnOsr, unidades: unidadesEnOsr },
+      porCategoria,
     };
 };
 
@@ -830,7 +848,7 @@ export const obtenerOsrSimulacionCiclico = async (req, res) => {
       return res.status(404).json({ ok: false, message: "Carga no encontrada" });
     }
 
-    const { reabastecer, incorporar, recall, estadoActualOsr } = await calcularOsrReabastecimiento(uploadId);
+    const { reabastecer, incorporar, recall, estadoActualOsr, porCategoria } = await calcularOsrReabastecimiento(uploadId);
 
     const unidadesRecall = recall.reduce((acc, s) => acc + s.ocupacion_actual, 0);
     const unidadesReabastecer = reabastecer.reduce((acc, s) => acc + s.unidades_a_reponer, 0);
@@ -876,6 +894,17 @@ export const obtenerOsrSimulacionCiclico = async (req, res) => {
         dias_habiles: diasHabilesNecesarios,
         capacidad_configurada: Boolean(capRes.rows[0]),
       },
+      por_categoria: Object.fromEntries(
+        Object.entries(porCategoria).map(([matriz, c]) => [
+          matriz,
+          {
+            ...c,
+            participacion_pct: estadoProyectado.unidades > 0
+              ? Number(((c.unidades_proyectado / estadoProyectado.unidades) * 100).toFixed(1))
+              : 0,
+          },
+        ])
+      ),
       resumen_acciones: {
         reabastecer: { cantidad: reabastecer.length, unidades: unidadesReabastecer },
         incorporar: { cantidad: incorporar.length, unidades: unidadesIncorporar },

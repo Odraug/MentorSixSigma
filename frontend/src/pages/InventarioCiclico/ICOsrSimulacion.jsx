@@ -14,6 +14,8 @@ export default function ICOsrSimulacion() {
   const [simulacion, setSimulacion] = useState(null);
   const [capacidad, setCapacidad] = useState([]);
   const [guardando, setGuardando] = useState(false);
+  const [objetivoUnidades, setObjetivoUnidades] = useState(900000);
+  const [objetivoSkus, setObjetivoSkus] = useState("");
 
   const cargarSimulacion = async () => {
     const resp = await apiGet(`/inventario-ciclico/${uploadId}/osr-simulacion`);
@@ -97,7 +99,11 @@ export default function ICOsrSimulacion() {
     );
   }
 
-  const { estado_actual, estado_proyectado, delta, capacidad: cap, tiempo_estimado, resumen_acciones } = simulacion;
+  const { estado_actual, estado_proyectado, delta, capacidad: cap, tiempo_estimado, resumen_acciones, por_categoria } = simulacion;
+
+  const objetivoSkusNum = Number(objetivoSkus) || 0;
+  const pctUnidadesObjetivo = objetivoUnidades > 0 ? (estado_proyectado.unidades / objetivoUnidades) * 100 : null;
+  const pctSkusObjetivo = objetivoSkusNum > 0 ? (estado_proyectado.skus / objetivoSkusNum) * 100 : null;
 
   const diasPara = (cantidad) =>
     tiempo_estimado.capacidad_diaria > 0 ? Math.ceil(cantidad / tiempo_estimado.capacidad_diaria) : null;
@@ -203,6 +209,96 @@ export default function ICOsrSimulacion() {
             {delta.unidades >= 0 ? "+" : ""}{fmt(delta.unidades)} unidades
           </p>
         </div>
+      </div>
+
+      {/* Capacidad objetivo del OSR */}
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
+        <h2 className="text-lg font-semibold text-indigo-300 mb-1">Capacidad objetivo del OSR</h2>
+        <p className="text-xs text-gray-500 mb-4">
+          Cuánto querés que el OSR llegue a almacenar en total. Cómo se reparte ese objetivo entre
+          AX/AY/BX todavía no está definido — por ahora se muestra la participación que surge del cálculo
+          por SKU (85% del tote de cada uno), no un reparto impuesto desde el objetivo.
+        </p>
+        <div className="flex flex-wrap items-end gap-4 mb-4">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Objetivo — Unidades</label>
+            <input
+              type="number"
+              min={0}
+              value={objetivoUnidades}
+              onChange={(e) => setObjetivoUnidades(Number(e.target.value) || 0)}
+              className="p-2 text-black rounded w-36"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Objetivo — SKU</label>
+            <input
+              type="number"
+              min={0}
+              value={objetivoSkus}
+              onChange={(e) => setObjetivoSkus(e.target.value)}
+              placeholder="opcional"
+              className="p-2 text-black rounded w-32"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <div>
+            <p className="text-xs text-gray-500">Unidades proyectadas vs. objetivo</p>
+            <p className="text-xl font-bold">
+              {fmt(estado_proyectado.unidades)} / {fmt(objetivoUnidades)}
+              {pctUnidadesObjetivo !== null && (
+                <span className="text-sm font-normal text-gray-400 ml-2">({pctUnidadesObjetivo.toFixed(1)}%)</span>
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">SKU proyectados vs. objetivo</p>
+            <p className="text-xl font-bold">
+              {fmt(estado_proyectado.skus)}{objetivoSkusNum > 0 ? ` / ${fmt(objetivoSkusNum)}` : ""}
+              {pctSkusObjetivo !== null && (
+                <span className="text-sm font-normal text-gray-400 ml-2">({pctSkusObjetivo.toFixed(1)}%)</span>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <h3 className="text-sm font-semibold text-gray-300 mb-2">Participación por categoría ABC/XYZ</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-400 border-b border-gray-700">
+                <th className="p-2">Categoría</th>
+                <th className="p-2 text-right">SKU actual</th>
+                <th className="p-2 text-right">Unidades actual</th>
+                <th className="p-2 text-right">SKU proyectado</th>
+                <th className="p-2 text-right">Unidades proyectado</th>
+                <th className="p-2 text-right">% participación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {["AX", "AY", "BX"].map((m) => {
+                const c = por_categoria[m];
+                return (
+                  <tr key={m} className="border-b border-gray-800">
+                    <td className="p-2">{m}</td>
+                    <td className="p-2 text-right">{fmt(c.skus_actual)}</td>
+                    <td className="p-2 text-right">{fmt(c.unidades_actual)}</td>
+                    <td className="p-2 text-right">{fmt(c.skus_proyectado)}</td>
+                    <td className="p-2 text-right">{fmt(c.unidades_proyectado)}</td>
+                    <td className="p-2 text-right">{c.participacion_pct}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-500 mt-3">
+          Cuando definamos el criterio para repartir el objetivo total por categoría (¿proporcional a SKU?
+          ¿a ventas? ¿a esta participación ya calculada?), este bloque puede ajustar los montos de
+          reabastecer/incorporar para apuntar directo al objetivo en vez de al 85% del tote individual.
+        </p>
       </div>
 
       {/* Capacidad liberada vs necesaria */}
