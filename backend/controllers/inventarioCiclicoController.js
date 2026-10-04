@@ -640,28 +640,11 @@ const CAMPO_CAPACIDAD = { FULL: "full_qty", HALF: "half_qty", QUARTER: "quarter_
 const TARGET_OCUPACION = 0.85;
 const TOP_SUGERENCIAS = 300;
 
-/**
- * GET /api/inventario-ciclico/:uploadId/osr-reabastecimiento
- * Tres sugerencias sobre el uso del OSR, usando las columnas del archivo
- * (stock_en_osr, logistica_osr, full/half/quarter_qty) + la clasificación
- * ABC/XYZ ya calculada en /abc-xyz:
- *  - reabastecer: SKU AX/AY/BX ya en el OSR por debajo del 85% del tote
- *    asignado según su categoría.
- *  - incorporar: SKU AX/AY/BX aptos (logistica_osr != 'N') que todavía no
- *    están en el OSR.
- *  - recall: SKU que están en el OSR pero NO son AX/AY/BX (baja rotación),
- *    candidatos a sacar para liberar capacidad.
- */
-export const obtenerOsrReabastecimientoCiclico = async (req, res) => {
-  try {
-    const empresaId = req.user?.empresa_id;
-    const { uploadId } = req.params;
-
-    if (!(await verificarUpload(uploadId, empresaId))) {
-      return res.status(404).json({ ok: false, message: "Carga no encontrada" });
-    }
-
-    const { rows } = await pool.query(
+// Clasifica cada SKU (ABC/XYZ) y lo reparte en las 3 bolsas de acción sobre
+// el OSR. Compartido entre /osr-reabastecimiento y /osr-simulacion para no
+// recalcular (ni poder desincronizar) la misma lógica dos veces.
+const calcularOsrReabastecimiento = async (uploadId) => {
+  const { rows } = await pool.query(
       `WITH por_sku AS (
          SELECT
            sku,
@@ -758,6 +741,49 @@ export const obtenerOsrReabastecimientoCiclico = async (req, res) => {
     incorporar.sort((a, b) => b.unidades_sugeridas - a.unidades_sugeridas);
     recall.sort((a, b) => b.ocupacion_actual - a.ocupacion_actual);
 
+    // Estado actual real del OSR: todo SKU con stock_en_osr>0, sin importar
+    // su categoría (incluye AX/AY/BX ya óptimos, que no caen en ninguna bolsa).
+    let skusEnOsr = 0;
+    let unidadesEnOsr = 0;
+    for (const r of rows) {
+      const stockOsr = Number(r.stock_en_osr) || 0;
+      if (stockOsr > 0) {
+        skusEnOsr++;
+        unidadesEnOsr += stockOsr;
+      }
+    }
+
+    return {
+      reabastecer,
+      incorporar,
+      recall,
+      estadoActualOsr: { skus: skusEnOsr, unidades: unidadesEnOsr },
+    };
+};
+
+/**
+ * GET /api/inventario-ciclico/:uploadId/osr-reabastecimiento
+ * Tres sugerencias sobre el uso del OSR, usando las columnas del archivo
+ * (stock_en_osr, logistica_osr, full/half/quarter_qty) + la clasificación
+ * ABC/XYZ ya calculada en /abc-xyz:
+ *  - reabastecer: SKU AX/AY/BX ya en el OSR por debajo del 85% del tote
+ *    asignado según su categoría.
+ *  - incorporar: SKU AX/AY/BX aptos (logistica_osr != 'N') que todavía no
+ *    están en el OSR.
+ *  - recall: SKU que están en el OSR pero NO son AX/AY/BX (baja rotación),
+ *    candidatos a sacar para liberar capacidad.
+ */
+export const obtenerOsrReabastecimientoCiclico = async (req, res) => {
+  try {
+    const empresaId = req.user?.empresa_id;
+    const { uploadId } = req.params;
+
+    if (!(await verificarUpload(uploadId, empresaId))) {
+      return res.status(404).json({ ok: false, message: "Carga no encontrada" });
+    }
+
+    const { reabastecer, incorporar, recall } = await calcularOsrReabastecimiento(uploadId);
+
     res.json({
       ok: true,
       resumen: {
@@ -781,5 +807,83 @@ export const obtenerOsrReabastecimientoCiclico = async (req, res) => {
   } catch (error) {
     console.error("❌ Error en reabastecimiento OSR Inventario Cíclico:", error);
     res.status(500).json({ ok: false, message: "Error calculando el reabastecimiento OSR" });
+  }
+};
+
+const CAPACIDAD_OSR_DEFAULT = 20;
+
+/**
+ * GET /api/inventario-ciclico/:uploadId/osr-simulacion
+ * Simula el estado del OSR si se ejecutan las 3 acciones (recall +
+ * reabastecer + incorporar): SKU y unidades antes/después, si lo liberado
+ * por recall alcanza para cubrir lo que piden reabastecer+incorporar, y un
+ * tiempo estimado de ejecución según la capacidad configurada para 'OSR' en
+ * ciclico_capacidad_cd (la misma tabla que usa Plan de Inventario Cíclico;
+ * si no está configurada se usa un default de 20 tareas/turno x 3 turnos).
+ */
+export const obtenerOsrSimulacionCiclico = async (req, res) => {
+  try {
+    const empresaId = req.user?.empresa_id;
+    const { uploadId } = req.params;
+
+    if (!(await verificarUpload(uploadId, empresaId))) {
+      return res.status(404).json({ ok: false, message: "Carga no encontrada" });
+    }
+
+    const { reabastecer, incorporar, recall, estadoActualOsr } = await calcularOsrReabastecimiento(uploadId);
+
+    const unidadesRecall = recall.reduce((acc, s) => acc + s.ocupacion_actual, 0);
+    const unidadesReabastecer = reabastecer.reduce((acc, s) => acc + s.unidades_a_reponer, 0);
+    const unidadesIncorporar = incorporar.reduce((acc, s) => acc + s.unidades_sugeridas, 0);
+    const unidadesNecesarias = unidadesReabastecer + unidadesIncorporar;
+
+    const estadoProyectado = {
+      skus: estadoActualOsr.skus - recall.length + incorporar.length,
+      unidades: estadoActualOsr.unidades - unidadesRecall + unidadesReabastecer + unidadesIncorporar,
+    };
+
+    const capRes = await pool.query(
+      `SELECT capacidad_por_turno, turnos_por_dia FROM ciclico_capacidad_cd WHERE empresa_id = $1 AND cd = 'OSR'`,
+      [empresaId]
+    );
+    const capacidadPorTurno = Number(capRes.rows[0]?.capacidad_por_turno) || CAPACIDAD_OSR_DEFAULT;
+    const turnosPorDia = Number(capRes.rows[0]?.turnos_por_dia) || 3;
+    const capacidadDiaria = capacidadPorTurno * turnosPorDia;
+
+    const totalTareas = recall.length + reabastecer.length + incorporar.length;
+    const diasHabilesNecesarios = capacidadDiaria > 0 ? Math.ceil(totalTareas / capacidadDiaria) : null;
+
+    res.json({
+      ok: true,
+      estado_actual: estadoActualOsr,
+      estado_proyectado: estadoProyectado,
+      delta: {
+        skus: estadoProyectado.skus - estadoActualOsr.skus,
+        unidades: estadoProyectado.unidades - estadoActualOsr.unidades,
+      },
+      capacidad: {
+        unidades_liberadas_recall: unidadesRecall,
+        unidades_necesarias_reabastecer_incorporar: unidadesNecesarias,
+        cobertura_pct: unidadesNecesarias > 0
+          ? Number(((unidadesRecall / unidadesNecesarias) * 100).toFixed(1))
+          : null,
+      },
+      tiempo_estimado: {
+        total_tareas: totalTareas,
+        capacidad_por_turno: capacidadPorTurno,
+        turnos_por_dia: turnosPorDia,
+        capacidad_diaria: capacidadDiaria,
+        dias_habiles: diasHabilesNecesarios,
+        capacidad_configurada: Boolean(capRes.rows[0]),
+      },
+      resumen_acciones: {
+        reabastecer: { cantidad: reabastecer.length, unidades: unidadesReabastecer },
+        incorporar: { cantidad: incorporar.length, unidades: unidadesIncorporar },
+        recall: { cantidad: recall.length, unidades: unidadesRecall },
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error en simulación OSR Inventario Cíclico:", error);
+    res.status(500).json({ ok: false, message: "Error calculando la simulación OSR" });
   }
 };

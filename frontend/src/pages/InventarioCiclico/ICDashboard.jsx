@@ -391,7 +391,15 @@ export default function ICDashboard() {
 
         return (
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
-            <h2 className="text-lg font-semibold text-indigo-300 mb-1">Sugerencia de reabastecimiento OSR</h2>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-1">
+              <h2 className="text-lg font-semibold text-indigo-300">Sugerencia de reabastecimiento OSR</h2>
+              <button
+                onClick={() => navigate(`/inventario-ciclico/${uploadId}/osr-simulacion`)}
+                className="bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-sm"
+              >
+                🔄 Simular optimización OSR
+              </button>
+            </div>
             <p className="text-xs text-gray-500 mb-4">
               Según clasificación ABC/XYZ: AX → tote Full, AY → Half, BX → Quarter, con un target de
               ocupación del 85% de la capacidad del tote. Usa el stock actual en el OSR, la aptitud
