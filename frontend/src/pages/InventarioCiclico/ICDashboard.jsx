@@ -8,11 +8,15 @@ const CELL_LABEL = {
   BX: "Rotación media, estable", BY: "Rotación media, variable", BZ: "Rotación media, errática",
   CX: "Baja rotación, estable", CY: "Baja rotación, variable", CZ: "Baja rotación, errática",
 };
-const CELL_COLOR = {
-  AX: "#065f46", AY: "#0f766e", AZ: "#155e75",
-  BX: "#854d0e", BY: "#a16207", BZ: "#b45309",
-  CX: "#7f1d1d", CY: "#991b1b", CZ: "#b91c1c",
-};
+const ABC_INFO = { A: "Alto", B: "Medio", C: "Bajo" };
+const XYZ_INFO = { X: "Estable", Y: "Media", Z: "Alta" };
+const ABC_IDX = { A: 0, B: 1, C: 2 };
+const XYZ_IDX = { X: 0, Y: 1, Z: 2 };
+// Degradado diagonal: AX (mejor combinación: alto volumen + estable) en
+// verde, CZ (peor: bajo volumen + errático) en rojo, con las combinaciones
+// intermedias en el medio según qué tan lejos estén de esa esquina.
+const GRADIENTE_MATRIZ = ["#15803d", "#22c55e", "#ca8a04", "#ea580c", "#b91c1c"];
+const colorCelda = (abc, xyz) => GRADIENTE_MATRIZ[ABC_IDX[abc] + XYZ_IDX[xyz]];
 
 // Codificación de dispersión propuesta: 1 excelente, 2 controlado,
 // 3 revisar, 4 alto, 5+ crítico.
@@ -214,23 +218,42 @@ export default function ICDashboard() {
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-8">
           <h2 className="text-lg font-semibold text-indigo-300 mb-3">Clasificación ABC / XYZ</h2>
 
-          <div className="grid grid-cols-3 gap-2 max-w-xl mb-6">
-            {["A", "B", "C"].map((abc) =>
-              ["X", "Y", "Z"].map((xyz) => {
-                const key = `${abc}${xyz}`;
-                return (
-                  <div
-                    key={key}
-                    className="rounded p-3 text-center"
-                    style={{ background: CELL_COLOR[key] }}
-                    title={CELL_LABEL[key]}
-                  >
-                    <div className="text-lg font-bold">{key}</div>
-                    <div className="text-xs opacity-90">{abcXyz.resumen_matriz[key]} SKUs</div>
+          <div className="max-w-xl mb-6">
+            <div className="grid grid-cols-[64px_1fr_1fr_1fr] gap-1.5">
+              <div />
+              {["A", "B", "C"].map((abc) => (
+                <div key={abc} className="text-center pb-1">
+                  <div className="text-sm font-bold text-gray-200">{abc}</div>
+                  <div className="text-[10px] text-gray-500">({ABC_INFO[abc]})</div>
+                </div>
+              ))}
+
+              {["X", "Y", "Z"].map((xyz) => (
+                <React.Fragment key={xyz}>
+                  <div className="flex flex-col items-center justify-center text-center pr-1">
+                    <div className="text-sm font-bold text-gray-200">{xyz}</div>
+                    <div className="text-[10px] text-gray-500">({XYZ_INFO[xyz]})</div>
                   </div>
-                );
-              })
-            )}
+                  {["A", "B", "C"].map((abc) => {
+                    const key = `${abc}${xyz}`;
+                    return (
+                      <div
+                        key={key}
+                        className="rounded p-3 text-center text-white flex flex-col items-center justify-center"
+                        style={{ background: colorCelda(abc, xyz) }}
+                        title={CELL_LABEL[key]}
+                      >
+                        <div className="text-base font-bold">{key}</div>
+                        <div className="text-xs opacity-90">{abcXyz.resumen_matriz[key]} SKUs</div>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-500 mt-2 text-center">
+              → Volumen de demanda: A (alto) a C (bajo) &nbsp;·&nbsp; ↓ Variabilidad: X (estable) a Z (errática)
+            </p>
           </div>
 
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
@@ -254,7 +277,7 @@ export default function ICDashboard() {
                     <td className="p-2">{row.stock_total.toLocaleString("es-CL")}</td>
                     <td className="p-2">{row.n_ubicaciones}</td>
                     <td className="p-2">
-                      <span className="px-2 py-1 rounded text-xs" style={{ background: CELL_COLOR[row.matriz] }}>
+                      <span className="px-2 py-1 rounded text-xs" style={{ background: colorCelda(row.matriz[0], row.matriz[1]) }}>
                         {row.matriz}
                       </span>
                     </td>
